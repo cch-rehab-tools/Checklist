@@ -27,7 +27,7 @@ header.app{border-bottom:3px double var(--teal);padding:14px 0 12px;margin-botto
 header.app h1{font-family:"Noto Serif TC",serif;font-size:1.25rem;color:var(--teal);letter-spacing:.04em; cursor:pointer;}
 header.app p{font-size:.8rem;color:#6B6B60;margin-top:2px}
 /* 表單選擇 */
-.picker{display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;margin-bottom:20px}
+.picker{display:grid;grid-template-columns:repeat(2, 1fr);gap:10px;margin-bottom:20px}
 .picker button{padding:14px 10px;border:1.5px solid var(--line);background:#fff;border-radius:10px;font-size:.95rem;font-weight:500;cursor:pointer;font-family:inherit;color:var(--ink);transition:border-color .15s,background .15s}
 .picker button.on{border-color:var(--teal);background:var(--teal-soft);color:var(--teal);font-weight:700}
 /* 區塊 */
@@ -118,6 +118,7 @@ header.app p{font-size:.8rem;color:#6B6B60;margin-top:2px}
     <button id="pick-minicex" class="on" onclick="switchForm('minicex')">Mini-CEX 評量表</button>
     <button id="pick-dops" onclick="switchForm('dops')">Splint-DOPS 副木評估</button>
     <button id="pick-evalDops" onclick="switchForm('evalDops')">評估工具 DOPS</button>
+    <button id="pick-ptDops" onclick="switchForm('ptDops')">物理因子治療儀器操作 DOPS</button>
   </div>
 
   <div id="formRoot"></div>
@@ -308,11 +309,52 @@ const FORMS = {
       {k:"improve", label:"建議加強項目"}
     ],
     sig: ["教師","學員"]
+  },
+  ptDops: {
+    title: "雲林基督教醫院復健技術課",
+    subtitle: "物理治療－操作技能直接觀察評估表",
+    subject: "物理因子治療儀器操作 DOPS",
+    info: [
+      {k:"date", label:"實施日期", type:"date"},
+      {k:"place", label:"評估地點", type:"chips", opts:["治療室","病房","其他"]},
+      {k:"placeOther", label:"其他地點（選「其他」時填寫）", type:"text"},
+      {k:"trainee", label:"學員姓名", type:"text"},
+      {k:"traineeId", label:"學員員工代號", type:"text"},
+      {k:"traineeRole", label:"學員身分", type:"chips", opts:["PGY學員","實習學生"]},
+      {k:"teacher", label:"教師姓名", type:"text"},
+      {k:"teacherId", label:"教師員工代號", type:"text"},
+      {k:"skill", label:"操作技能名稱（儀器名稱）", type:"text", full:true}
+    ],
+    naLabel: "N/A",
+    items: [
+      {n:"1. 病人辨識"},
+      {n:"2. 治療內容與部位確認"},
+      {n:"3. 確認有無禁忌症"},
+      {n:"4. 操作前準備"},
+      {n:"5. 正確擺放治療端位置"},
+      {n:"6. 確認治療強度與治療時間"},
+      {n:"7. 隨時注意病人反應"},
+      {n:"8. 正確回應病人衛教諮詢"},
+      {n:"9. 治療結束後整理儀器"},
+      {n:"10. 整體表現"}
+    ],
+    scaleNote: "1~3 分：未達最低標準；4~6 分：達到預期標準；7~9 分：超過預期標準。",
+    feedback: [
+      {k:"good", label:"表現良好的項目"},
+      {k:"improve", label:"建議加強項目"}
+    ],
+    sig: ["教師","學員"],
+    notesPlaceholder: "例：操作前能完成病人辨識、治療部位與禁忌症確認；治療過程中能注意病人反應，但儀器參數設定仍需提示……"
   }
 };
 
 let cur = "minicex";
-let state = { minicex:{info:{},scores:{},fb:{}}, dops:{info:{},scores:{},fb:{}}, evalDops:{info:{},scores:{},fb:{}} };
+let state = {
+  minicex:{info:{},scores:{},fb:{}},
+  dops:{info:{},scores:{},fb:{}},
+  evalDops:{info:{},scores:{},fb:{}},
+  ptDops:{info:{},scores:{},fb:{}}
+};
 
 /* ---------- Logo 處理 ---------- */
 // 內建院徽（彰化基督教醫療財團法人），所有裝置打開即自動套用；
@@ -352,11 +394,14 @@ function switchForm(f){
   document.getElementById("pick-minicex").classList.toggle("on", f==="minicex");
   document.getElementById("pick-dops").classList.toggle("on", f==="dops");
   document.getElementById("pick-evalDops").classList.toggle("on", f==="evalDops");
+  document.getElementById("pick-ptDops").classList.toggle("on", f==="ptDops");
   render();
 }
 
 function render(){
   const F = FORMS[cur], S = state[cur];
+  document.getElementById("rawNotes").placeholder = F.notesPlaceholder ||
+    "例：請記錄本次直接觀察到的具體表現、做得好的地方與需要加強之處……";
   let h = '<div class="card"><h2>基本資料</h2><div class="fgrid">';
   for(const fd of F.info){
     h += `<div class="field${fd.full?" full":""}"><label>${fd.label}</label>`;
@@ -441,7 +486,12 @@ function copyPrompt(){
     err.textContent="請先在上方貼入觀察筆記。"; err.style.display="block"; return;
   }
   const t = buildPrompt(notes);
-  const formName = (cur==="minicex") ? "Mini-CEX（三欄）" : (cur==="dops" ? "Splint-DOPS（兩欄）" : "評估工具 DOPS（兩欄）");
+  const formName = {
+    minicex: "Mini-CEX（三欄）",
+    dops: "Splint-DOPS（兩欄）",
+    evalDops: "評估工具 DOPS（兩欄）",
+    ptDops: "物理因子治療儀器操作 DOPS（兩欄）"
+  }[cur] || "臨床評估表單";
 
   function showSuccess(){
     err.style.color="#2A6B3A";
@@ -619,6 +669,7 @@ function buildPrint(){
         <div class="pt-sub" style="margin-bottom:0;">${F.subtitle}</div>
         <div style="flex:1; text-align:right; font-size:11pt; font-weight:bold; padding-bottom:2px;">實施日期：${printDate}</div>
       </div>
+      ${F.subject ? `<div style="font-size:13pt;font-weight:700;margin-top:3pt;">${F.subject}</div>` : ""}
     </div>
     <hr style="margin-top:2pt;">
   `;
@@ -626,9 +677,14 @@ function buildPrint(){
   if(cur==="minicex"){
     h += `<div class="pt-row"><b>教師</b>：${infoVal(S,"teacher")}　${["臨床","資深"].map(o=>box(S.info.teacherRole===o)+" "+o).join("　")}</div>`;
     h += `<div class="pt-row"><b>學員</b>：${infoVal(S,"trainee")}　${["實習","PGY1","PGY2"].map(o=>box(S.info.traineeRole===o)+" "+o).join("　")}</div>`;
-    h += `<div class="pt-row"><b>時間</b>：${infoVal(S,"date")}　${infoVal(S,"time")}　<b>地點</b>：${["電療室","運動治療室","兒童治療室"].map(o=>box(S.info.place===o)+" "+o).join("　")}　${box(S.info.place==="其他")} 其他 ${S.info.placeOther||""}</div>`;
+    h += `<div class="pt-row"><b>時間</b>：${infoVal(S,"date")}　${infoVal(S,"time")}　<b>地點</b>：${["電療室","運動治療室","兒童治療室"].map(o=>box(S.info.place===o)+" "+o).join("　")}　${box(S.info.place==="其他")} 其他 ${esc(S.info.placeOther||"")}</div>`;
     h += `<div class="pt-row"><b>病人</b>：${["男","女"].map(o=>box(S.info.sex===o)+" "+o).join("　")}　年齡：${infoVal(S,"age")} 歲　${["新病人","舊病人"].map(o=>box(S.info.newold===o)+" "+o).join("　")}</div>`;
     h += `<div class="pt-row"><b>診斷</b>：${infoVal(S,"dx")}　/處置操作：${infoVal(S,"proc")}</div>`;
+  } else if(cur==="ptDops"){
+    h += `<div class="pt-row"><b>實施日期</b>：${infoVal(S,"date")}　<b>評估地點</b>：${["治療室","病房","其他"].map(o=>box(S.info.place===o)+" "+o).join("　")}${S.info.place==="其他"&&S.info.placeOther?"："+esc(S.info.placeOther):""}</div>`;
+    h += `<div class="pt-row"><b>學員</b>：${infoVal(S,"trainee")}　<b>員工代號</b>：${infoVal(S,"traineeId")}　${["PGY學員","實習學生"].map(o=>box(S.info.traineeRole===o)+" "+o).join("　")}</div>`;
+    h += `<div class="pt-row"><b>教師</b>：${infoVal(S,"teacher")}　<b>員工代號</b>：${infoVal(S,"teacherId")}</div>`;
+    h += `<div class="pt-row"><b>操作技能名稱</b>：${infoVal(S,"skill")}</div>`;
   } else {
     h += `<div class="pt-row"><b>實施日期</b>：${infoVal(S,"date")}　<b>評估地點</b>：${["治療室","病房","其他"].map(o=>box(S.info.place===o)+" "+o).join("　")}</div>`;
     h += `<div class="pt-row"><b>學員</b>：${infoVal(S,"trainee")}　<b>教師</b>：${infoVal(S,"teacher")}</div>`;
@@ -730,6 +786,7 @@ async function exportPDF(mode = "save"){
     if(cur==="minicex") fnamePrefix = "miniCEX";
     else if(cur==="dops") fnamePrefix = "SplintDOPS";
     else if(cur==="evalDops") fnamePrefix = "EvalDOPS";
+    else if(cur==="ptDops") fnamePrefix = "PT_DOPS";
     
     const fname = `${fnamePrefix}_${who}_${d}.pdf`;
     if(isShare){
