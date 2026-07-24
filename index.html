@@ -122,16 +122,21 @@ header.app p{font-size:.8rem;color:#6B6B60;margin-top:2px}
   <div id="formRoot"></div>
 
   <div class="card" id="aiCard">
-    <h2>回饋整理 (內建 Gemini AI)</h2>
+    <h2>回饋整理（Gemini AI）</h2>
+    <div class="field full" style="margin-bottom:10px">
+      <label for="employeeId">院方共用 AI 員工編號（僅確認使用資格，不會隨觀察筆記存檔）</label>
+      <input id="employeeId" type="text" inputmode="numeric" autocomplete="off"
+        placeholder="輸入員工編號即可使用院方共用 AI" oninput="rememberEmployeeId()">
+    </div>
     <div class="field full">
       <label>觀察筆記（口語、片段都可以；請勿包含病人姓名等可識別資訊）</label>
       <textarea id="rawNotes" placeholder="例：個案製作前置式垂足板，precut 尺寸太小無法包覆腳踝……"></textarea>
     </div>
     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <button class="aibtn" id="aiGo" onclick="runAI()">🚀 AI 整理至回饋欄</button>
+      <button class="aibtn" id="aiGo" onclick="runAI()">✨ AI 一鍵整理</button>
       <button class="aibtn" style="background:#fff;color:var(--amber);border:1.5px solid var(--amber)" onclick="copyPrompt()">複製整理指令 (手動備用)</button>
     </div>
-    <div class="ainote">輸入觀察筆記後，點擊「AI 整理」即可自動分項填寫。</div>
+    <div class="ainote">輸入員工編號與觀察筆記後，點擊「AI 一鍵整理」即可自動分項填寫。</div>
     <div class="aierr" id="aiErr"></div>
     <div id="fbFields" style="margin-top:14px"></div>
   </div>
@@ -152,11 +157,9 @@ header.app p{font-size:.8rem;color:#6B6B60;margin-top:2px}
 
 <script>
 // =========================================================================
-// 【AI 金鑰設定方式】
-// 本檔案「不」內建任何 API 金鑰（網頁原始碼任何人都看得到，放金鑰會外洩）。
-// 需要一鍵 AI 整理的使用者：點右上角「🔑 AI 金鑰」按鈕，貼入自己申請的免費 Gemini 金鑰，
-// 金鑰只儲存在該裝置瀏覽器的 localStorage，不會上傳到任何地方。
-// 申請方式：aistudio.google.com 登入 Google 帳號 → Get API key（免費、免綁卡）
+// 【AI 使用方式】
+// 院方共用 Gemini 金鑰只存在 Cloudflare Worker Secret，不會寫入本檔案。
+// 同仁輸入白名單內的員工編號即可使用院方共用 AI；個人金鑰、複製指令與手動填寫仍保留為備用。
 // =========================================================================
 
 /* ---------- 工具函式 ---------- */
@@ -201,8 +204,19 @@ function updateAiNote(){
   keyBtn.style.color = hasKey ? "var(--teal)" : "var(--amber)";
   keyBtn.style.borderColor = hasKey ? "var(--teal)" : "var(--amber)";
   note.innerHTML = hasKey
-    ? "✅ 此裝置已設定金鑰：輸入筆記後可直接點「AI 整理」。也可改用複製指令或手動填寫。"
-    : "三種填寫方式：① 點右上角「🔑 AI 金鑰」貼入自己的免費 Gemini 金鑰，即可一鍵整理 ② 點「複製整理指令」貼到自己慣用的 AI ③ 直接在下方欄位手動填寫。";
+    ? "四種填寫方式：① 輸入員工編號使用院方共用 AI ② 此裝置已設定個人金鑰，可在未輸入員工編號時使用 ③ 複製整理指令到慣用 AI ④ 手動填寫。"
+    : "三種填寫方式：① 輸入員工編號使用院方共用 AI ② 複製整理指令到 Gemini／ChatGPT／Claude ③ 手動填寫。右上角仍可設定個人金鑰作為備用。";
+}
+
+function rememberEmployeeId(){
+  const input = document.getElementById("employeeId");
+  try { sessionStorage.setItem("cchEmployeeId", input.value.trim()); } catch(e) {}
+}
+
+function initEmployeeId(){
+  try {
+    document.getElementById("employeeId").value = sessionStorage.getItem("cchEmployeeId") || "";
+  } catch(e) {}
 }
 
 // =========================================================================
@@ -514,36 +528,17 @@ function copyPrompt(){
   }
 }
 
-// 自動 AI 整理
-async function runAI(){
-  const notes = document.getElementById("rawNotes").value.trim();
-  const err = document.getElementById("aiErr");
-  err.style.display="none";
-  
-  if(!notes){ err.textContent="請先在上方貼入觀察筆記。"; err.style.display="block"; return; }
+// 自動 AI 整理：優先使用院方共用服務，個人 Gemini 金鑰保留為備用
+const SHARED_AI_ENDPOINT = "https://cch-rehab-api.lightgreen93.workers.dev/ai";
 
-  // 改為僅從瀏覽器的本地儲存讀取金鑰（透過彩蛋設定）
-  const activeApiKey = localStorage.getItem('userGeminiApiKey');
-
-  if(!activeApiKey) {
-    err.style.color="#A33"; err.style.backgroundColor="#FFF0F0";
-    err.innerHTML="此裝置尚未設定 AI 金鑰，無法一鍵整理。你可以：<br>① 點右上角「🔑 AI 金鑰」貼入自己申請的免費金鑰（aistudio.google.com → Get API key）<br>② 點「複製整理指令」貼到自己慣用的 AI<br>③ 直接在下方欄位手動填寫"; 
-    err.style.display="block";
-    return;
-  }
-  
-  const btn = document.getElementById("aiGo");
-  btn.disabled = true; 
-  btn.textContent = "⚙️ AI 整理中…";
-  
+function buildPersonalAiPayload(notes){
   const F = FORMS[cur];
-  
   const schemaProperties = {};
   F.feedback.forEach(f => {
-      schemaProperties[f.k] = { type: "STRING", description: f.label };
+    schemaProperties[f.k] = { type: "STRING", description: f.label };
   });
 
-  let rule3 = cur === "minicex" 
+  const rule3 = cur === "minicex"
     ? `3. 正向肯定放入「${F.feedback[0].label}」；待改進與具體建議放入「${F.feedback[1].label}」；下次觀察前可執行的具體目標放入「${F.feedback[2].label}」。`
     : `3. 正向肯定放入「${F.feedback[0].label}」；待改進與具體建議放入「${F.feedback[1].label}」。`;
 
@@ -555,74 +550,130 @@ ${rule3}
 4. 筆記中沒有提到的內容絕對不要編造；若某欄沒有對應內容，該欄請回傳空字串 ("")。
 5. 內容中絕對不要出現病人姓名等可識別之隱私資訊。`;
 
-  const userQuery = `觀察筆記：\n${notes}`;
-
-  const payload = {
-    contents: [{ parts: [{ text: userQuery }] }],
+  return {
+    contents: [{ parts: [{ text: `觀察筆記：\n${notes}` }] }],
     systemInstruction: { parts: [{ text: systemPrompt }] },
-    generationConfig: { 
-        responseMimeType: "application/json", 
-        responseSchema: { 
-            type: "OBJECT", 
-            properties: schemaProperties 
-        } 
-    }
-  };
-
-  try{
-    let data = null, lastErr = null;
-    const delays = [1000, 2000, 4000];
-    
-    for(let attempt=0; attempt<=3; attempt++){
-      if(attempt > 0) btn.textContent = `⚙️ 整理中…（第 ${attempt+1} 次嘗試）`;
-      try{
-        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${activeApiKey}`, {
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body:JSON.stringify(payload)
-        });
-        
-        data = await r.json();
-        if(!r.ok) {
-           if (data.error && data.error.message.includes("API key not valid")) {
-               throw new Error("AI 金鑰無效或不正確，請重新設定");
-           }
-           throw new Error(data.error?.message || `API 回應錯誤 ${r.status}`);
-        }
-        break; 
-      }catch(e){
-        lastErr = e;
-        if(e.message.includes("API 金鑰無效")) break; 
-        if(attempt < 3) await new Promise(res => setTimeout(res, delays[attempt]));
+    generationConfig: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: "OBJECT",
+        properties: schemaProperties
       }
     }
-    
-    if(!data || data.error) throw lastErr;
-    
-    const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if(!textResponse) throw new Error("AI 未回傳內容");
-    
-    const parsed = JSON.parse(textResponse);
+  };
+}
+
+async function runSharedAI(employeeId, notes){
+  const controller = new AbortController();
+  const timeout = setTimeout(()=>controller.abort(), 35000);
+  try{
+    const r = await fetch(SHARED_AI_ENDPOINT, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ employeeId, formType:cur, notes }),
+      signal:controller.signal
+    });
+    let data = {};
+    try{ data = await r.json(); }catch(e){}
+    if(!r.ok || !data.ok){
+      throw new Error(data.error || "院方共用 AI 暫時無法使用。");
+    }
+    return data.feedback || {};
+  }catch(e){
+    if(e.name === "AbortError") throw new Error("AI 回應逾時，請稍後再試。");
+    throw e;
+  }finally{
+    clearTimeout(timeout);
+  }
+}
+
+async function runPersonalKeyAI(activeApiKey, notes, btn){
+  const payload = buildPersonalAiPayload(notes);
+  let data = null, lastErr = null;
+  const delays = [1000, 2000, 4000];
+
+  for(let attempt=0; attempt<=3; attempt++){
+    if(attempt > 0) btn.textContent = `⚙️ 整理中…（第 ${attempt+1} 次嘗試）`;
+    try{
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(activeApiKey)}`, {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(payload)
+      });
+      data = await r.json();
+      if(!r.ok){
+        if(data.error && /API key not valid/i.test(data.error.message || "")){
+          throw new Error("AI 金鑰無效或不正確，請重新設定。");
+        }
+        throw new Error(data.error?.message || `API 回應錯誤 ${r.status}`);
+      }
+      break;
+    }catch(e){
+      lastErr = e;
+      if(e.message.includes("AI 金鑰無效")) break;
+      if(attempt < 3) await new Promise(resolve => setTimeout(resolve, delays[attempt]));
+    }
+  }
+
+  if(!data || data.error) throw lastErr || new Error("個人 AI 連線失敗。");
+  const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if(!textResponse) throw new Error("AI 未回傳內容。");
+  return JSON.parse(textResponse);
+}
+
+async function runAI(){
+  const notes = document.getElementById("rawNotes").value.trim();
+  const employeeId = document.getElementById("employeeId").value.trim();
+  const activeApiKey = localStorage.getItem("userGeminiApiKey");
+  const err = document.getElementById("aiErr");
+  err.style.display = "none";
+
+  if(!notes){
+    err.textContent = "請先在上方貼入觀察筆記。";
+    err.style.display = "block";
+    return;
+  }
+
+  if(!employeeId && !activeApiKey){
+    err.style.color = "#A33";
+    err.style.backgroundColor = "#FFF0F0";
+    err.innerHTML = "請先輸入員工編號使用院方共用 AI。你也可以：<br>① 點右上角「🔑 AI 金鑰」使用自己的 Gemini 金鑰<br>② 點「複製整理指令」貼到慣用的 AI<br>③ 直接在下方欄位手動填寫";
+    err.style.display = "block";
+    return;
+  }
+
+  const btn = document.getElementById("aiGo");
+  btn.disabled = true;
+  btn.textContent = "⚙️ AI 整理中…";
+
+  try{
+    const parsed = employeeId
+      ? await runSharedAI(employeeId, notes)
+      : await runPersonalKeyAI(activeApiKey, notes, btn);
     const S = state[cur];
-    
+
     for(const f of FORMS[cur].feedback){
-      if(parsed[f.k] !== undefined){ 
-          S.fb[f.k] = parsed[f.k]; 
+      if(parsed[f.k] !== undefined){
+        S.fb[f.k] = String(parsed[f.k]);
       }
     }
     renderFb();
-    
-    err.style.color="#2A6B3A"; err.style.backgroundColor="#E8F1E6"; 
-    err.textContent = "✅ 整理完成！";
+
+    err.style.color = "#2A6B3A";
+    err.style.backgroundColor = "#E8F1E6";
+    err.textContent = employeeId
+      ? "✅ 院方共用 AI 整理完成！請確認並視需要修改。"
+      : "✅ 個人 AI 整理完成！請確認並視需要修改。";
     err.style.display = "block";
-    setTimeout(()=>err.style.display="none", 3000);
-    
+    setTimeout(()=>err.style.display="none", 5000);
   }catch(e){
-    err.style.color="#A33"; err.style.backgroundColor="#FFF0F0";
-    err.textContent = "自動整理失敗 ("+e.message+")。請檢查網路或金鑰。";
+    err.style.color = "#A33";
+    err.style.backgroundColor = "#FFF0F0";
+    err.textContent = "自動整理失敗："+e.message;
     err.style.display = "block";
   }finally{
-    btn.disabled = false; btn.textContent = "🚀 AI 整理至回饋欄";
+    btn.disabled = false;
+    btn.textContent = "✨ AI 一鍵整理";
   }
 }
 
@@ -834,6 +885,7 @@ function clearAll(){
 }
 
 initLogo();
+initEmployeeId();
 updateAiNote();
 render();
 </script>
