@@ -216,10 +216,10 @@ const FORMS = {
     title: "雲林基督教醫院復健技術課",
     subtitle: "迷你臨床檢定 Mini-CEX 評量表",
     info: [
-      {k:"teacher", label:"教師姓名", type:"text"},
-      {k:"teacherRole", label:"教師角色", type:"chips", opts:["臨床","資深"]},
       {k:"trainee", label:"學員姓名", type:"text"},
       {k:"traineeRole", label:"學員身分", type:"chips", opts:["實習","PGY1","PGY2"]},
+      {k:"teacher", label:"教師姓名", type:"text"},
+      {k:"teacherRole", label:"教師角色", type:"chips", opts:["臨床","資深"]},
       {k:"date", label:"日期", type:"date"},
       {k:"time", label:"時間", type:"time"},
       {k:"place", label:"地點", type:"chips", opts:["電療室","運動治療室","兒童治療室","其他"]},
@@ -675,8 +675,8 @@ function buildPrint(){
   `;
 
   if(cur==="minicex"){
-    h += `<div class="pt-row"><b>教師</b>：${infoVal(S,"teacher")}　${["臨床","資深"].map(o=>box(S.info.teacherRole===o)+" "+o).join("　")}</div>`;
     h += `<div class="pt-row"><b>學員</b>：${infoVal(S,"trainee")}　${["實習","PGY1","PGY2"].map(o=>box(S.info.traineeRole===o)+" "+o).join("　")}</div>`;
+    h += `<div class="pt-row"><b>教師</b>：${infoVal(S,"teacher")}　${["臨床","資深"].map(o=>box(S.info.teacherRole===o)+" "+o).join("　")}</div>`;
     h += `<div class="pt-row"><b>時間</b>：${infoVal(S,"date")}　${infoVal(S,"time")}　<b>地點</b>：${["電療室","運動治療室","兒童治療室"].map(o=>box(S.info.place===o)+" "+o).join("　")}　${box(S.info.place==="其他")} 其他 ${esc(S.info.placeOther||"")}</div>`;
     h += `<div class="pt-row"><b>病人</b>：${["男","女"].map(o=>box(S.info.sex===o)+" "+o).join("　")}　年齡：${infoVal(S,"age")} 歲　${["新病人","舊病人"].map(o=>box(S.info.newold===o)+" "+o).join("　")}</div>`;
     h += `<div class="pt-row"><b>診斷</b>：${infoVal(S,"dx")}　/處置操作：${infoVal(S,"proc")}</div>`;
