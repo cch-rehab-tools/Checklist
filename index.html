@@ -231,8 +231,9 @@ const FORMS = {
     title: "雲林基督教醫院復健技術課",
     subtitle: "迷你臨床檢定 Mini-CEX 評量表",
     info: [
+      {k:"discipline", label:"職類", type:"chips", opts:["職能治療","物理治療"]},
       {k:"trainee", label:"學員姓名", type:"text"},
-      {k:"traineeRole", label:"學員身分", type:"chips", opts:["實習","PGY1","PGY2"]},
+      {k:"traineeRole", label:"學員身分", type:"chips", opts:["實習學生","PGY學員"]},
       {k:"teacher", label:"教師姓名", type:"text"},
       {k:"teacherRole", label:"教師角色", type:"chips", opts:["臨床","資深"]},
       {k:"date", label:"日期", type:"date"},
@@ -271,8 +272,12 @@ const FORMS = {
     info: [
       {k:"date", label:"實施日期", type:"date"},
       {k:"place", label:"評估地點", type:"chips", opts:["治療室","病房","其他"]},
+      {k:"placeOther", label:"其他地點（選「其他」時填寫）", type:"text"},
       {k:"trainee", label:"學員姓名", type:"text"},
+      {k:"traineeId", label:"學員員工代號", type:"text"},
+      {k:"traineeRole", label:"學員身分", type:"chips", opts:["實習學生","PGY學員"]},
       {k:"teacher", label:"教師姓名", type:"text"},
+      {k:"teacherId", label:"教師員工代號", type:"text"},
       {k:"skill", label:"操作技能名稱", type:"text", full:true},
       {k:"tTimes", label:"教師曾用 DOPS 評估學員總次數", type:"chips", opts:["0","1","2","3","4","5-9",">10"]},
       {k:"sTimes", label:"學員曾執行此技能總次數", type:"chips", opts:["0","1","2","3","4","5-9",">10"]},
@@ -298,8 +303,12 @@ const FORMS = {
     info: [
       {k:"date", label:"實施日期", type:"date"},
       {k:"place", label:"評估地點", type:"chips", opts:["治療室","病房","其他"]},
+      {k:"placeOther", label:"其他地點（選「其他」時填寫）", type:"text"},
       {k:"trainee", label:"學員姓名", type:"text"},
+      {k:"traineeId", label:"學員員工代號", type:"text"},
+      {k:"traineeRole", label:"學員身分", type:"chips", opts:["實習學生","PGY學員"]},
       {k:"teacher", label:"教師姓名", type:"text"},
+      {k:"teacherId", label:"教師員工代號", type:"text"},
       {k:"skill", label:"操作技能名稱 (Evaluation Tool)", type:"text", full:true},
       {k:"tTimes", label:"教師曾用 DOPS 評估學員總次數", type:"chips", opts:["0","1","2","3","4","5-9",">10"]},
       {k:"sTimes", label:"學員曾執行此技能總次數", type:"chips", opts:["0","1","2","3","4","5-9",">10"]},
@@ -335,7 +344,7 @@ const FORMS = {
       {k:"placeOther", label:"其他地點（選「其他」時填寫）", type:"text"},
       {k:"trainee", label:"學員姓名", type:"text"},
       {k:"traineeId", label:"學員員工代號", type:"text"},
-      {k:"traineeRole", label:"學員身分", type:"chips", opts:["PGY學員","實習學生"]},
+      {k:"traineeRole", label:"學員身分", type:"chips", opts:["實習學生","PGY學員"]},
       {k:"teacher", label:"教師姓名", type:"text"},
       {k:"teacherId", label:"教師員工代號", type:"text"},
       {k:"skill", label:"操作技能名稱（儀器名稱）", type:"text", full:true}
@@ -463,67 +472,120 @@ function setFeedback(k,v){
   S.fb[k] = v;
 }
 
-/* ---------- 確認存檔（目前先開放物理因子 DOPS） ---------- */
+/* ---------- 確認存檔 ---------- */
 const SHARED_SAVE_ENDPOINT = "https://cch-rehab-api.lightgreen93.workers.dev/save";
 let saveRequestInFlight = false;
 
-function isSaved(){
-  return state[cur]?.save?.status === "saved";
+function isSaved(formType = cur){
+  return state[formType]?.save?.status === "saved";
 }
 
 function makeRecordId(){
   if(window.crypto?.randomUUID) return window.crypto.randomUUID();
-  return "ptdops-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,10);
+  return "record-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,10);
+}
+
+function getSaveRoute(formType = cur){
+  const info = state[formType]?.info || {};
+  let discipline = "";
+  if(formType === "minicex"){
+    if(info.discipline === "職能治療") discipline = "OT";
+    if(info.discipline === "物理治療") discipline = "PT";
+  }else{
+    discipline = formType === "ptDops" ? "PT" : "OT";
+  }
+  const traineeGroup =
+    info.traineeRole === "PGY學員" ? "PGY" :
+    info.traineeRole === "實習學生" ? "實習學生" : "";
+  return {discipline, traineeGroup};
+}
+
+function getFormSaveName(formType = cur){
+  return {
+    minicex: "Mini-CEX",
+    dops: "Splint-DOPS",
+    evalDops: "評估工具 DOPS",
+    ptDops: "物理因子 DOPS"
+  }[formType] || "臨床評核表";
 }
 
 function validateSave(){
-  if(cur !== "ptDops") return "目前先開放「物理因子治療儀器操作 DOPS」確認存檔。";
-  const S = state.ptDops;
+  const S = state[cur];
   const required = [
     ["date","實施日期"],["place","評估地點"],["trainee","學員姓名"],
-    ["traineeRole","學員身分"],["teacher","教師姓名"],["skill","操作技能名稱"]
+    ["traineeRole","學員身分"],["teacher","教師姓名"]
   ];
+  if(cur === "minicex") required.unshift(["discipline","職類"]);
+  else required.push(["skill","操作技能名稱"]);
   for(const [key,label] of required){
     if(!String(S.info[key] || "").trim()) return `請先填寫「${label}」。`;
   }
   if(S.info.place === "其他" && !String(S.info.placeOther || "").trim()){
     return "評估地點選擇「其他」時，請填寫其他地點。";
   }
-  for(let i=0;i<FORMS.ptDops.items.length;i++){
+  for(let i=0;i<FORMS[cur].items.length;i++){
     const value = S.scores[i];
     if(value !== "NA" && !(Number.isInteger(value) && value >= 1 && value <= 9)){
       return `請完成第 ${i + 1} 項評分。`;
     }
   }
+  const route = getSaveRoute();
+  if(!route.discipline || !route.traineeGroup) return "請確認職類與學員身分。";
   const employeeId = String(document.getElementById("employeeId")?.value || "").trim();
   if(!employeeId) return "請先輸入員工編號，作為本次存檔授權驗證。";
   return "";
 }
 
 function buildSavePayload(){
-  const S = state.ptDops;
+  const S = state[cur];
+  const route = getSaveRoute();
   if(!S.save.recordId) S.save.recordId = makeRecordId();
-  return {
-    employeeId: String(document.getElementById("employeeId")?.value || "").trim(),
-    formType: "ptDops",
-    recordId: S.save.recordId,
-    discipline: "PT",
-    traineeGroup: S.info.traineeRole === "PGY學員" ? "PGY" : "實習學生",
-    data: {
-      version: "1",
-      traineeStage: String(S.info.traineeRole || ""),
-      evaluationDate: String(S.info.date || ""),
-      traineeName: String(S.info.trainee || "").trim(),
-      traineeCode: String(S.info.traineeId || "").trim(),
-      teacherName: String(S.info.teacher || "").trim(),
-      teacherCode: String(S.info.teacherId || "").trim(),
-      place: String(S.info.place || ""),
-      placeOther: String(S.info.placeOther || "").trim(),
+  const data = {
+    version: "1",
+    traineeStage: String(S.info.traineeRole || ""),
+    evaluationDate: String(S.info.date || ""),
+    traineeName: String(S.info.trainee || "").trim(),
+    traineeCode: String(S.info.traineeId || "").trim(),
+    teacherName: String(S.info.teacher || "").trim(),
+    teacherCode: String(S.info.teacherId || "").trim(),
+    place: String(S.info.place || ""),
+    placeOther: String(S.info.placeOther || "").trim(),
+    scores: FORMS[cur].items.map((_,i)=>S.scores[i])
+  };
+
+  if(cur === "minicex"){
+    Object.assign(data, {
+      evaluationTime: String(S.info.time || ""),
+      teacherRole: String(S.info.teacherRole || ""),
+      patientSex: String(S.info.sex || ""),
+      patientAge: String(S.info.age || ""),
+      patientStatus: String(S.info.newold || ""),
+      diagnosis: String(S.info.dx || "").trim(),
+      procedure: String(S.info.proc || "").trim(),
+      observationMinutes: String(S.info.obsMin || ""),
+      feedbackMinutes: String(S.info.fbMin || ""),
+      praise: String(S.fb.praise || "").trim(),
+      improve: String(S.fb.improve || "").trim(),
+      action: String(S.fb.action || "").trim()
+    });
+  }else{
+    Object.assign(data, {
       skillName: String(S.info.skill || "").trim(),
-      scores: FORMS.ptDops.items.map((_,i)=>S.scores[i]),
+      teacherDopsCount: String(S.info.tTimes || ""),
+      traineeSkillCount: String(S.info.sTimes || ""),
+      difficulty: String(S.info.diff || ""),
       good: String(S.fb.good || "").trim(),
       improve: String(S.fb.improve || "").trim()
-    }
+    });
+  }
+
+  return {
+    employeeId: String(document.getElementById("employeeId")?.value || "").trim(),
+    formType: cur,
+    recordId: S.save.recordId,
+    discipline: route.discipline,
+    traineeGroup: route.traineeGroup,
+    data
   };
 }
 
@@ -531,11 +593,7 @@ function updateSaveButton(){
   const btn = document.getElementById("saveBtn");
   if(!btn) return;
   const save = state[cur]?.save || {};
-  if(cur !== "ptDops"){
-    btn.disabled = true;
-    btn.textContent = "確認存檔";
-    btn.title = "目前先開放物理因子治療儀器操作 DOPS";
-  }else if(save.status === "saved"){
+  if(save.status === "saved"){
     btn.disabled = true;
     btn.textContent = "已確認存檔";
     btn.title = `紀錄 ID：${save.recordId}`;
@@ -553,6 +611,10 @@ function applySaveLock(){
   if(!["saving","saved"].includes(state[cur]?.save?.status)) return;
   document.querySelectorAll("#formRoot input,#formRoot button,#fbFields textarea,#rawNotes,#aiGo")
     .forEach(el=>{ el.disabled = true; });
+}
+
+function setPickerDisabled(disabled){
+  document.querySelectorAll(".picker button").forEach(el=>{ el.disabled = disabled; });
 }
 
 async function confirmSave(){
@@ -574,16 +636,21 @@ async function confirmSave(){
   }
 
   const payload = buildSavePayload();
-  const destination = payload.traineeGroup === "PGY" ? "物理治療 PGY 資料庫" : "物理治療實習生資料庫";
+  const savingForm = cur;
+  const savingState = state[savingForm];
+  const disciplineLabel = payload.discipline === "PT" ? "物理治療" : "職能治療";
+  const destination = `${disciplineLabel}${payload.traineeGroup === "PGY" ? " PGY" : "實習學生"}資料庫`;
+  const skillLine = payload.data.skillName ? `\n技能：${payload.data.skillName}` : "";
   const confirmed = window.confirm(
     `即將寫入「${destination}」。\n\n` +
-    `學員：${payload.data.traineeName}\n日期：${payload.data.evaluationDate}\n技能：${payload.data.skillName}\n\n` +
+    `表單：${getFormSaveName(savingForm)}\n學員：${payload.data.traineeName}\n日期：${payload.data.evaluationDate}${skillLine}\n\n` +
     "AI 原始觀察筆記與驗證用員工編號不會儲存。確認存檔後，本份表單將鎖定避免重複提交。"
   );
   if(!confirmed) return;
 
   saveRequestInFlight = true;
-  state.ptDops.save.status = "saving";
+  savingState.save.status = "saving";
+  setPickerDisabled(true);
   updateSaveButton();
   applySaveLock();
   try{
@@ -594,17 +661,18 @@ async function confirmSave(){
     });
     const result = await response.json().catch(()=>({}));
     if(!response.ok || !result.ok) throw new Error(result.error || "存檔服務暫時無法使用。");
-    state.ptDops.save.status = "saved";
-    state.ptDops.save.recordId = result.recordId || payload.recordId;
-    state.ptDops.save.savedAt = result.savedAt || "";
-    msg.textContent = `已確認存檔｜紀錄 ID：${state.ptDops.save.recordId}`;
-    render();
+    savingState.save.status = "saved";
+    savingState.save.recordId = result.recordId || payload.recordId;
+    savingState.save.savedAt = result.savedAt || "";
+    msg.textContent = `已確認存檔｜紀錄 ID：${savingState.save.recordId}`;
+    if(cur === savingForm) render();
   }catch(error){
-    state.ptDops.save.status = "error";
+    savingState.save.status = "error";
     msg.textContent = `存檔失敗：${error.message}`;
-    render();
+    if(cur === savingForm) render();
   }finally{
     saveRequestInFlight = false;
+    setPickerDisabled(false);
     updateSaveButton();
   }
 }
@@ -873,19 +941,21 @@ function buildPrint(){
   `;
 
   if(cur==="minicex"){
-    h += `<div class="pt-row"><b>學員</b>：${infoVal(S,"trainee")}　${["實習","PGY1","PGY2"].map(o=>box(S.info.traineeRole===o)+" "+o).join("　")}</div>`;
+    h += `<div class="pt-row"><b>職類</b>：${["職能治療","物理治療"].map(o=>box(S.info.discipline===o)+" "+o).join("　")}</div>`;
+    h += `<div class="pt-row"><b>學員</b>：${infoVal(S,"trainee")}　${["實習學生","PGY學員"].map(o=>box(S.info.traineeRole===o)+" "+o).join("　")}</div>`;
     h += `<div class="pt-row"><b>教師</b>：${infoVal(S,"teacher")}　${["臨床","資深"].map(o=>box(S.info.teacherRole===o)+" "+o).join("　")}</div>`;
     h += `<div class="pt-row"><b>時間</b>：${infoVal(S,"date")}　${infoVal(S,"time")}　<b>地點</b>：${["電療室","運動治療室","兒童治療室"].map(o=>box(S.info.place===o)+" "+o).join("　")}　${box(S.info.place==="其他")} 其他 ${esc(S.info.placeOther||"")}</div>`;
     h += `<div class="pt-row"><b>病人</b>：${["男","女"].map(o=>box(S.info.sex===o)+" "+o).join("　")}　年齡：${infoVal(S,"age")} 歲　${["新病人","舊病人"].map(o=>box(S.info.newold===o)+" "+o).join("　")}</div>`;
     h += `<div class="pt-row"><b>診斷</b>：${infoVal(S,"dx")}　/處置操作：${infoVal(S,"proc")}</div>`;
   } else if(cur==="ptDops"){
     h += `<div class="pt-row"><b>實施日期</b>：${infoVal(S,"date")}　<b>評估地點</b>：${["治療室","病房","其他"].map(o=>box(S.info.place===o)+" "+o).join("　")}${S.info.place==="其他"&&S.info.placeOther?"："+esc(S.info.placeOther):""}</div>`;
-    h += `<div class="pt-row"><b>學員</b>：${infoVal(S,"trainee")}　<b>員工代號</b>：${infoVal(S,"traineeId")}　${["PGY學員","實習學生"].map(o=>box(S.info.traineeRole===o)+" "+o).join("　")}</div>`;
+    h += `<div class="pt-row"><b>學員</b>：${infoVal(S,"trainee")}　<b>員工代號</b>：${infoVal(S,"traineeId")}　${["實習學生","PGY學員"].map(o=>box(S.info.traineeRole===o)+" "+o).join("　")}</div>`;
     h += `<div class="pt-row"><b>教師</b>：${infoVal(S,"teacher")}　<b>員工代號</b>：${infoVal(S,"teacherId")}</div>`;
     h += `<div class="pt-row"><b>操作技能名稱</b>：${infoVal(S,"skill")}</div>`;
   } else {
-    h += `<div class="pt-row"><b>實施日期</b>：${infoVal(S,"date")}　<b>評估地點</b>：${["治療室","病房","其他"].map(o=>box(S.info.place===o)+" "+o).join("　")}</div>`;
-    h += `<div class="pt-row"><b>學員</b>：${infoVal(S,"trainee")}　<b>教師</b>：${infoVal(S,"teacher")}</div>`;
+    h += `<div class="pt-row"><b>實施日期</b>：${infoVal(S,"date")}　<b>評估地點</b>：${["治療室","病房","其他"].map(o=>box(S.info.place===o)+" "+o).join("　")}${S.info.place==="其他"&&S.info.placeOther?"："+esc(S.info.placeOther):""}</div>`;
+    h += `<div class="pt-row"><b>學員</b>：${infoVal(S,"trainee")}　<b>員工代號</b>：${infoVal(S,"traineeId")}　${["實習學生","PGY學員"].map(o=>box(S.info.traineeRole===o)+" "+o).join("　")}</div>`;
+    h += `<div class="pt-row"><b>教師</b>：${infoVal(S,"teacher")}　<b>員工代號</b>：${infoVal(S,"teacherId")}</div>`;
     h += `<div class="pt-row"><b>操作技能名稱</b>：${infoVal(S,"skill")}</div>`;
     h += `<div class="pt-row">教師曾經使用 DOPS 評估學員的總次數：${["0","1","2","3","4","5-9",">10"].map(o=>box(S.info.tTimes===o)+o).join(" ")}</div>`;
     h += `<div class="pt-row">學員曾經執行此操作技能總次數：${["0","1","2","3","4","5-9",">10"].map(o=>box(S.info.sTimes===o)+o).join(" ")}</div>`;
