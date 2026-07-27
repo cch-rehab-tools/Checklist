@@ -392,6 +392,7 @@ function initLogo(){
 
 /* ---------- 畫面 ---------- */
 function switchForm(f){
+  resetClearPrompt();
   cur = f;
   document.getElementById("pick-minicex").classList.toggle("on", f==="minicex");
   document.getElementById("pick-dops").classList.toggle("on", f==="dops");
@@ -445,7 +446,7 @@ function scoreBtn(i,v,sel){
 function setInfo(k,v){
   const S = state[cur];
   if(["saving","saved"].includes(S.save?.status)) return;
-  S.info[k] = (S.info[k]===v) ? "" : v;
+  S.info[k] = v;
   render();
 }
 function setTextInfo(k,v){
@@ -456,7 +457,7 @@ function setTextInfo(k,v){
 function setScore(i,v){
   const S = state[cur];
   if(["saving","saved"].includes(S.save?.status)) return;
-  S.scores[i] = (S.scores[i]===v) ? null : v;
+  S.scores[i] = v;
   render();
 }
 function renderFb(){
@@ -475,6 +476,7 @@ function setFeedback(k,v){
 /* ---------- 確認存檔 ---------- */
 const SHARED_SAVE_ENDPOINT = "https://cch-rehab-api.lightgreen93.workers.dev/save";
 let saveRequestInFlight = false;
+let aiRequestInFlight = false;
 
 function isSaved(formType = cur){
   return state[formType]?.save?.status === "saved";
@@ -608,9 +610,11 @@ function updateSaveButton(){
 }
 
 function applySaveLock(){
-  if(!["saving","saved"].includes(state[cur]?.save?.status)) return;
-  document.querySelectorAll("#formRoot input,#formRoot button,#fbFields textarea,#rawNotes,#aiGo")
-    .forEach(el=>{ el.disabled = true; });
+  const locked = ["saving","saved"].includes(state[cur]?.save?.status);
+  document.querySelectorAll("#formRoot input,#formRoot button,#fbFields textarea,#rawNotes")
+    .forEach(el=>{ el.disabled = locked; });
+  const aiBtn = document.getElementById("aiGo");
+  if(aiBtn) aiBtn.disabled = locked || aiRequestInFlight;
 }
 
 function setPickerDisabled(disabled){
@@ -625,7 +629,7 @@ async function confirmSave(){
     msg.textContent = `此份表單已存檔｜紀錄 ID：${state[cur].save.recordId}`;
     return;
   }
-  if(document.getElementById("aiGo")?.disabled){
+  if(aiRequestInFlight){
     msg.textContent = "AI 整理仍在進行，請完成後再確認存檔。";
     return;
   }
@@ -882,6 +886,8 @@ async function runAI(){
   }
 
   const btn = document.getElementById("aiGo");
+  aiRequestInFlight = true;
+  setPickerDisabled(true);
   btn.disabled = true;
   btn.textContent = "⚙️ AI 整理中…";
 
@@ -911,8 +917,11 @@ async function runAI(){
     err.textContent = "自動整理失敗："+e.message;
     err.style.display = "block";
   }finally{
+    aiRequestInFlight = false;
+    setPickerDisabled(false);
     btn.disabled = false;
     btn.textContent = "✨ AI 一鍵整理";
+    applySaveLock();
   }
 }
 
@@ -1095,31 +1104,51 @@ async function exportPDF(mode = "save"){
 }
 
 let clearArmed = false;
+let clearArmTimer = null;
+
+function resetClearPrompt(){
+  clearArmed = false;
+  if(clearArmTimer){
+    clearTimeout(clearArmTimer);
+    clearArmTimer = null;
+  }
+  const btn = document.getElementById("clearBtn");
+  if(btn){
+    btn.textContent = "清除重填";
+    btn.style.background = "";
+    btn.style.color = "";
+  }
+}
+
 function clearAll(){
   const btn = document.getElementById("clearBtn");
   const msg = document.getElementById("barMsg");
+  if(saveRequestInFlight){
+    msg.textContent = "存檔仍在進行，請完成後再清除。";
+    return;
+  }
+  if(aiRequestInFlight){
+    msg.textContent = "AI 整理仍在進行，請完成後再清除。";
+    return;
+  }
   if(!clearArmed){
     clearArmed = true;
     btn.textContent = "再按一次確認清除";
     btn.style.background = "#8A4A3A";
     btn.style.color = "#fff";
     msg.textContent = "將清除目前表單所有內容";
-    setTimeout(()=>{
-      clearArmed = false;
-      btn.textContent = "清除重填";
-      btn.style.background = "";
-      btn.style.color = "";
+    clearArmTimer = setTimeout(()=>{
+      resetClearPrompt();
       msg.textContent = "";
     }, 4000);
     return;
   }
-  clearArmed = false;
+  resetClearPrompt();
   state[cur] = {info:{},scores:{},fb:{},save:{}};
   document.getElementById("rawNotes").value = "";
-  const btn2 = document.getElementById("clearBtn");
-  btn2.textContent = "清除重填";
-  btn2.style.background = "";
-  btn2.style.color = "";
+  const aiErr = document.getElementById("aiErr");
+  aiErr.textContent = "";
+  aiErr.style.display = "none";
   msg.textContent = "已清除";
   setTimeout(()=>{ msg.textContent=""; }, 2000);
   render();
