@@ -71,6 +71,8 @@ header.app p{font-size:.8rem;color:#6B6B60;margin-top:2px}
 .actionbar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 16px;display:flex;gap:10px;justify-content:center;z-index:50}
 .actionbar button{padding:11px 22px;border-radius:10px;font-size:.95rem;font-weight:700;font-family:inherit;cursor:pointer}
 .btn-export{background:var(--teal);color:#fff;border:none}
+.btn-save{background:var(--amber);color:#fff;border:none}
+.btn-save:disabled{opacity:.5;cursor:not-allowed}
 .btn-clear{background:#fff;color:#8A4A3A;border:1px solid var(--line)}
 /* 列印 */
 #printArea{display:none}
@@ -104,7 +106,7 @@ header.app p{font-size:.8rem;color:#6B6B60;margin-top:2px}
     <img id="logoPreview" src="" alt="院徽">
     <div>
       <h1 id="secretTitle">復健科臨床評估表單</h1>
-      <p>雲林基督教醫院復健技術課 · 填寫資料不會被儲存，匯出 PDF 後請自行歸檔</p>
+      <p>雲林基督教醫院復健技術課 · 只有按下「確認存檔」才會寫入紀錄；紙本簽章仍為正式紀錄</p>
     </div>
   </header>
   <div class="topbar">
@@ -144,8 +146,9 @@ header.app p{font-size:.8rem;color:#6B6B60;margin-top:2px}
 
 <div class="actionbar">
   <div style="display:flex;flex-direction:column;align-items:center;gap:4px;width:100%">
-    <div style="display:flex;gap:10px;justify-content:center">
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <button class="btn-clear" id="clearBtn" onclick="clearAll()">清除重填</button>
+      <button class="btn-save" id="saveBtn" onclick="confirmSave()">確認存檔</button>
       <button class="btn-export" id="exportBtn" onclick="exportPDF('save')">匯出 PDF</button>
       <button class="btn-export" id="shareBtn" onclick="exportPDF('share')">📤 分享 / 寄送</button>
     </div>
@@ -228,8 +231,9 @@ const FORMS = {
     title: "雲林基督教醫院復健技術課",
     subtitle: "迷你臨床檢定 Mini-CEX 評量表",
     info: [
+      {k:"discipline", label:"職類", type:"chips", opts:["職能治療","物理治療"]},
       {k:"trainee", label:"學員姓名", type:"text"},
-      {k:"traineeRole", label:"學員身分", type:"chips", opts:["實習","PGY1","PGY2"]},
+      {k:"traineeRole", label:"學員身分", type:"chips", opts:["實習學生","PGY學員"]},
       {k:"teacher", label:"教師姓名", type:"text"},
       {k:"teacherRole", label:"教師角色", type:"chips", opts:["臨床","資深"]},
       {k:"date", label:"日期", type:"date"},
@@ -268,8 +272,12 @@ const FORMS = {
     info: [
       {k:"date", label:"實施日期", type:"date"},
       {k:"place", label:"評估地點", type:"chips", opts:["治療室","病房","其他"]},
+      {k:"placeOther", label:"其他地點（選「其他」時填寫）", type:"text"},
       {k:"trainee", label:"學員姓名", type:"text"},
+      {k:"traineeId", label:"學員員工代號", type:"text"},
+      {k:"traineeRole", label:"學員身分", type:"chips", opts:["實習學生","PGY學員"]},
       {k:"teacher", label:"教師姓名", type:"text"},
+      {k:"teacherId", label:"教師員工代號", type:"text"},
       {k:"skill", label:"操作技能名稱", type:"text", full:true},
       {k:"tTimes", label:"教師曾用 DOPS 評估學員總次數", type:"chips", opts:["0","1","2","3","4","5-9",">10"]},
       {k:"sTimes", label:"學員曾執行此技能總次數", type:"chips", opts:["0","1","2","3","4","5-9",">10"]},
@@ -295,8 +303,12 @@ const FORMS = {
     info: [
       {k:"date", label:"實施日期", type:"date"},
       {k:"place", label:"評估地點", type:"chips", opts:["治療室","病房","其他"]},
+      {k:"placeOther", label:"其他地點（選「其他」時填寫）", type:"text"},
       {k:"trainee", label:"學員姓名", type:"text"},
+      {k:"traineeId", label:"學員員工代號", type:"text"},
+      {k:"traineeRole", label:"學員身分", type:"chips", opts:["實習學生","PGY學員"]},
       {k:"teacher", label:"教師姓名", type:"text"},
+      {k:"teacherId", label:"教師員工代號", type:"text"},
       {k:"skill", label:"操作技能名稱 (Evaluation Tool)", type:"text", full:true},
       {k:"tTimes", label:"教師曾用 DOPS 評估學員總次數", type:"chips", opts:["0","1","2","3","4","5-9",">10"]},
       {k:"sTimes", label:"學員曾執行此技能總次數", type:"chips", opts:["0","1","2","3","4","5-9",">10"]},
@@ -332,7 +344,7 @@ const FORMS = {
       {k:"placeOther", label:"其他地點（選「其他」時填寫）", type:"text"},
       {k:"trainee", label:"學員姓名", type:"text"},
       {k:"traineeId", label:"學員員工代號", type:"text"},
-      {k:"traineeRole", label:"學員身分", type:"chips", opts:["PGY學員","實習學生"]},
+      {k:"traineeRole", label:"學員身分", type:"chips", opts:["實習學生","PGY學員"]},
       {k:"teacher", label:"教師姓名", type:"text"},
       {k:"teacherId", label:"教師員工代號", type:"text"},
       {k:"skill", label:"操作技能名稱（儀器名稱）", type:"text", full:true}
@@ -362,10 +374,10 @@ const FORMS = {
 
 let cur = "minicex";
 let state = {
-  minicex:{info:{},scores:{},fb:{}},
-  dops:{info:{},scores:{},fb:{}},
-  evalDops:{info:{},scores:{},fb:{}},
-  ptDops:{info:{},scores:{},fb:{}}
+  minicex:{info:{},scores:{},fb:{},save:{}},
+  dops:{info:{},scores:{},fb:{},save:{}},
+  evalDops:{info:{},scores:{},fb:{},save:{}},
+  ptDops:{info:{},scores:{},fb:{},save:{}}
 };
 
 /* ---------- Logo 處理 ---------- */
@@ -380,6 +392,7 @@ function initLogo(){
 
 /* ---------- 畫面 ---------- */
 function switchForm(f){
+  resetClearPrompt();
   cur = f;
   document.getElementById("pick-minicex").classList.toggle("on", f==="minicex");
   document.getElementById("pick-dops").classList.toggle("on", f==="dops");
@@ -399,7 +412,7 @@ function render(){
       h += '<div class="chips">' + fd.opts.map(o=>
         `<button class="${S.info[fd.k]===o?"on":""}" onclick="setInfo('${fd.k}','${o}')">${o}</button>`).join("") + '</div>';
     } else {
-      h += `<input type="${fd.type}" value="${esc(S.info[fd.k]||"")}" oninput="state['${cur}'].info['${fd.k}']=this.value">`;
+      h += `<input type="${fd.type}" value="${esc(S.info[fd.k]||"")}" oninput="setTextInfo('${fd.k}',this.value)">`;
     }
     h += '</div>';
   }
@@ -423,6 +436,8 @@ function render(){
   h += '</div>';
   document.getElementById("formRoot").innerHTML = h;
   renderFb();
+  updateSaveButton();
+  applySaveLock();
 }
 
 function scoreBtn(i,v,sel){
@@ -430,20 +445,240 @@ function scoreBtn(i,v,sel){
 }
 function setInfo(k,v){
   const S = state[cur];
-  S.info[k] = (S.info[k]===v) ? "" : v;
+  if(["saving","saved"].includes(S.save?.status)) return;
+  S.info[k] = v;
   render();
+}
+function setTextInfo(k,v){
+  const S = state[cur];
+  if(["saving","saved"].includes(S.save?.status)) return;
+  S.info[k] = v;
 }
 function setScore(i,v){
   const S = state[cur];
-  S.scores[i] = (S.scores[i]===v) ? null : v;
+  if(["saving","saved"].includes(S.save?.status)) return;
+  S.scores[i] = v;
   render();
 }
 function renderFb(){
   const F = FORMS[cur], S = state[cur];
   document.getElementById("fbFields").innerHTML = F.feedback.map(f=>
     `<div class="field full" style="margin-bottom:10px"><label>${f.label}</label>
-     <textarea oninput="state['${cur}'].fb['${f.k}']=this.value" id="fb-${f.k}">${esc(S.fb[f.k]||"")}</textarea></div>`
+     <textarea oninput="setFeedback('${f.k}',this.value)" id="fb-${f.k}">${esc(S.fb[f.k]||"")}</textarea></div>`
   ).join("");
+}
+function setFeedback(k,v){
+  const S = state[cur];
+  if(["saving","saved"].includes(S.save?.status)) return;
+  S.fb[k] = v;
+}
+
+/* ---------- 確認存檔 ---------- */
+const SHARED_SAVE_ENDPOINT = "https://cch-rehab-api.lightgreen93.workers.dev/save";
+let saveRequestInFlight = false;
+let aiRequestInFlight = false;
+
+function isSaved(formType = cur){
+  return state[formType]?.save?.status === "saved";
+}
+
+function makeRecordId(){
+  if(window.crypto?.randomUUID) return window.crypto.randomUUID();
+  return "record-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,10);
+}
+
+function getSaveRoute(formType = cur){
+  const info = state[formType]?.info || {};
+  let discipline = "";
+  if(formType === "minicex"){
+    if(info.discipline === "職能治療") discipline = "OT";
+    if(info.discipline === "物理治療") discipline = "PT";
+  }else{
+    discipline = formType === "ptDops" ? "PT" : "OT";
+  }
+  const traineeGroup =
+    info.traineeRole === "PGY學員" ? "PGY" :
+    info.traineeRole === "實習學生" ? "實習學生" : "";
+  return {discipline, traineeGroup};
+}
+
+function getFormSaveName(formType = cur){
+  return {
+    minicex: "Mini-CEX",
+    dops: "Splint-DOPS",
+    evalDops: "評估工具 DOPS",
+    ptDops: "物理因子 DOPS"
+  }[formType] || "臨床評核表";
+}
+
+function validateSave(){
+  const S = state[cur];
+  const required = [
+    ["date","實施日期"],["place","評估地點"],["trainee","學員姓名"],
+    ["traineeRole","學員身分"],["teacher","教師姓名"]
+  ];
+  if(cur === "minicex") required.unshift(["discipline","職類"]);
+  else required.push(["skill","操作技能名稱"]);
+  for(const [key,label] of required){
+    if(!String(S.info[key] || "").trim()) return `請先填寫「${label}」。`;
+  }
+  if(S.info.place === "其他" && !String(S.info.placeOther || "").trim()){
+    return "評估地點選擇「其他」時，請填寫其他地點。";
+  }
+  for(let i=0;i<FORMS[cur].items.length;i++){
+    const value = S.scores[i];
+    if(value !== "NA" && !(Number.isInteger(value) && value >= 1 && value <= 9)){
+      return `請完成第 ${i + 1} 項評分。`;
+    }
+  }
+  const route = getSaveRoute();
+  if(!route.discipline || !route.traineeGroup) return "請確認職類與學員身分。";
+  const employeeId = String(document.getElementById("employeeId")?.value || "").trim();
+  if(!employeeId) return "請先輸入員工編號，作為本次存檔授權驗證。";
+  return "";
+}
+
+function buildSavePayload(){
+  const S = state[cur];
+  const route = getSaveRoute();
+  if(!S.save.recordId) S.save.recordId = makeRecordId();
+  const data = {
+    version: "1",
+    traineeStage: String(S.info.traineeRole || ""),
+    evaluationDate: String(S.info.date || ""),
+    traineeName: String(S.info.trainee || "").trim(),
+    traineeCode: String(S.info.traineeId || "").trim(),
+    teacherName: String(S.info.teacher || "").trim(),
+    teacherCode: String(S.info.teacherId || "").trim(),
+    place: String(S.info.place || ""),
+    placeOther: String(S.info.placeOther || "").trim(),
+    scores: FORMS[cur].items.map((_,i)=>S.scores[i])
+  };
+
+  if(cur === "minicex"){
+    Object.assign(data, {
+      evaluationTime: String(S.info.time || ""),
+      teacherRole: String(S.info.teacherRole || ""),
+      patientSex: String(S.info.sex || ""),
+      patientAge: String(S.info.age || ""),
+      patientStatus: String(S.info.newold || ""),
+      diagnosis: String(S.info.dx || "").trim(),
+      procedure: String(S.info.proc || "").trim(),
+      observationMinutes: String(S.info.obsMin || ""),
+      feedbackMinutes: String(S.info.fbMin || ""),
+      praise: String(S.fb.praise || "").trim(),
+      improve: String(S.fb.improve || "").trim(),
+      action: String(S.fb.action || "").trim()
+    });
+  }else{
+    Object.assign(data, {
+      skillName: String(S.info.skill || "").trim(),
+      teacherDopsCount: String(S.info.tTimes || ""),
+      traineeSkillCount: String(S.info.sTimes || ""),
+      difficulty: String(S.info.diff || ""),
+      good: String(S.fb.good || "").trim(),
+      improve: String(S.fb.improve || "").trim()
+    });
+  }
+
+  return {
+    employeeId: String(document.getElementById("employeeId")?.value || "").trim(),
+    formType: cur,
+    recordId: S.save.recordId,
+    discipline: route.discipline,
+    traineeGroup: route.traineeGroup,
+    data
+  };
+}
+
+function updateSaveButton(){
+  const btn = document.getElementById("saveBtn");
+  if(!btn) return;
+  const save = state[cur]?.save || {};
+  if(save.status === "saved"){
+    btn.disabled = true;
+    btn.textContent = "已確認存檔";
+    btn.title = `紀錄 ID：${save.recordId}`;
+  }else if(saveRequestInFlight){
+    btn.disabled = true;
+    btn.textContent = "存檔中…";
+  }else{
+    btn.disabled = false;
+    btn.textContent = "確認存檔";
+    btn.title = "確認後才會寫入臨床評核紀錄";
+  }
+}
+
+function applySaveLock(){
+  const locked = ["saving","saved"].includes(state[cur]?.save?.status);
+  document.querySelectorAll("#formRoot input,#formRoot button,#fbFields textarea,#rawNotes")
+    .forEach(el=>{ el.disabled = locked; });
+  const aiBtn = document.getElementById("aiGo");
+  if(aiBtn) aiBtn.disabled = locked || aiRequestInFlight;
+}
+
+function setPickerDisabled(disabled){
+  document.querySelectorAll(".picker button").forEach(el=>{ el.disabled = disabled; });
+}
+
+async function confirmSave(){
+  const msg = document.getElementById("barMsg");
+  msg.textContent = "";
+  if(saveRequestInFlight) return;
+  if(isSaved()){
+    msg.textContent = `此份表單已存檔｜紀錄 ID：${state[cur].save.recordId}`;
+    return;
+  }
+  if(aiRequestInFlight){
+    msg.textContent = "AI 整理仍在進行，請完成後再確認存檔。";
+    return;
+  }
+  const validationError = validateSave();
+  if(validationError){
+    msg.textContent = validationError;
+    return;
+  }
+
+  const payload = buildSavePayload();
+  const savingForm = cur;
+  const savingState = state[savingForm];
+  const disciplineLabel = payload.discipline === "PT" ? "物理治療" : "職能治療";
+  const destination = `${disciplineLabel}${payload.traineeGroup === "PGY" ? " PGY" : "實習學生"}資料庫`;
+  const skillLine = payload.data.skillName ? `\n技能：${payload.data.skillName}` : "";
+  const confirmed = window.confirm(
+    `即將寫入「${destination}」。\n\n` +
+    `表單：${getFormSaveName(savingForm)}\n學員：${payload.data.traineeName}\n日期：${payload.data.evaluationDate}${skillLine}\n\n` +
+    "AI 原始觀察筆記與驗證用員工編號不會儲存。確認存檔後，本份表單將鎖定避免重複提交。"
+  );
+  if(!confirmed) return;
+
+  saveRequestInFlight = true;
+  savingState.save.status = "saving";
+  setPickerDisabled(true);
+  updateSaveButton();
+  applySaveLock();
+  try{
+    const response = await fetch(SHARED_SAVE_ENDPOINT, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json().catch(()=>({}));
+    if(!response.ok || !result.ok) throw new Error(result.error || "存檔服務暫時無法使用。");
+    savingState.save.status = "saved";
+    savingState.save.recordId = result.recordId || payload.recordId;
+    savingState.save.savedAt = result.savedAt || "";
+    msg.textContent = `已確認存檔｜紀錄 ID：${savingState.save.recordId}`;
+    if(cur === savingForm) render();
+  }catch(error){
+    savingState.save.status = "error";
+    msg.textContent = `存檔失敗：${error.message}`;
+    if(cur === savingForm) render();
+  }finally{
+    saveRequestInFlight = false;
+    setPickerDisabled(false);
+    updateSaveButton();
+  }
 }
 
 /* ---------- AI 整理 ---------- */
@@ -622,6 +857,14 @@ async function runPersonalKeyAI(activeApiKey, notes, btn){
 }
 
 async function runAI(){
+  if(isSaved()){
+    const err = document.getElementById("aiErr");
+    err.style.color="#8A4A3A";
+    err.style.backgroundColor="#FFF4E5";
+    err.textContent="此份表單已確認存檔並鎖定；如需填寫新紀錄，請按「清除重填」。";
+    err.style.display="block";
+    return;
+  }
   const notes = document.getElementById("rawNotes").value.trim();
   const employeeId = document.getElementById("employeeId").value.trim();
   const activeApiKey = localStorage.getItem("userGeminiApiKey");
@@ -643,6 +886,8 @@ async function runAI(){
   }
 
   const btn = document.getElementById("aiGo");
+  aiRequestInFlight = true;
+  setPickerDisabled(true);
   btn.disabled = true;
   btn.textContent = "⚙️ AI 整理中…";
 
@@ -672,8 +917,11 @@ async function runAI(){
     err.textContent = "自動整理失敗："+e.message;
     err.style.display = "block";
   }finally{
+    aiRequestInFlight = false;
+    setPickerDisabled(false);
     btn.disabled = false;
     btn.textContent = "✨ AI 一鍵整理";
+    applySaveLock();
   }
 }
 
@@ -702,19 +950,21 @@ function buildPrint(){
   `;
 
   if(cur==="minicex"){
-    h += `<div class="pt-row"><b>學員</b>：${infoVal(S,"trainee")}　${["實習","PGY1","PGY2"].map(o=>box(S.info.traineeRole===o)+" "+o).join("　")}</div>`;
+    h += `<div class="pt-row"><b>職類</b>：${["職能治療","物理治療"].map(o=>box(S.info.discipline===o)+" "+o).join("　")}</div>`;
+    h += `<div class="pt-row"><b>學員</b>：${infoVal(S,"trainee")}　${["實習學生","PGY學員"].map(o=>box(S.info.traineeRole===o)+" "+o).join("　")}</div>`;
     h += `<div class="pt-row"><b>教師</b>：${infoVal(S,"teacher")}　${["臨床","資深"].map(o=>box(S.info.teacherRole===o)+" "+o).join("　")}</div>`;
     h += `<div class="pt-row"><b>時間</b>：${infoVal(S,"date")}　${infoVal(S,"time")}　<b>地點</b>：${["電療室","運動治療室","兒童治療室"].map(o=>box(S.info.place===o)+" "+o).join("　")}　${box(S.info.place==="其他")} 其他 ${esc(S.info.placeOther||"")}</div>`;
     h += `<div class="pt-row"><b>病人</b>：${["男","女"].map(o=>box(S.info.sex===o)+" "+o).join("　")}　年齡：${infoVal(S,"age")} 歲　${["新病人","舊病人"].map(o=>box(S.info.newold===o)+" "+o).join("　")}</div>`;
     h += `<div class="pt-row"><b>診斷</b>：${infoVal(S,"dx")}　/處置操作：${infoVal(S,"proc")}</div>`;
   } else if(cur==="ptDops"){
     h += `<div class="pt-row"><b>實施日期</b>：${infoVal(S,"date")}　<b>評估地點</b>：${["治療室","病房","其他"].map(o=>box(S.info.place===o)+" "+o).join("　")}${S.info.place==="其他"&&S.info.placeOther?"："+esc(S.info.placeOther):""}</div>`;
-    h += `<div class="pt-row"><b>學員</b>：${infoVal(S,"trainee")}　<b>員工代號</b>：${infoVal(S,"traineeId")}　${["PGY學員","實習學生"].map(o=>box(S.info.traineeRole===o)+" "+o).join("　")}</div>`;
+    h += `<div class="pt-row"><b>學員</b>：${infoVal(S,"trainee")}　<b>員工代號</b>：${infoVal(S,"traineeId")}　${["實習學生","PGY學員"].map(o=>box(S.info.traineeRole===o)+" "+o).join("　")}</div>`;
     h += `<div class="pt-row"><b>教師</b>：${infoVal(S,"teacher")}　<b>員工代號</b>：${infoVal(S,"teacherId")}</div>`;
     h += `<div class="pt-row"><b>操作技能名稱</b>：${infoVal(S,"skill")}</div>`;
   } else {
-    h += `<div class="pt-row"><b>實施日期</b>：${infoVal(S,"date")}　<b>評估地點</b>：${["治療室","病房","其他"].map(o=>box(S.info.place===o)+" "+o).join("　")}</div>`;
-    h += `<div class="pt-row"><b>學員</b>：${infoVal(S,"trainee")}　<b>教師</b>：${infoVal(S,"teacher")}</div>`;
+    h += `<div class="pt-row"><b>實施日期</b>：${infoVal(S,"date")}　<b>評估地點</b>：${["治療室","病房","其他"].map(o=>box(S.info.place===o)+" "+o).join("　")}${S.info.place==="其他"&&S.info.placeOther?"："+esc(S.info.placeOther):""}</div>`;
+    h += `<div class="pt-row"><b>學員</b>：${infoVal(S,"trainee")}　<b>員工代號</b>：${infoVal(S,"traineeId")}　${["實習學生","PGY學員"].map(o=>box(S.info.traineeRole===o)+" "+o).join("　")}</div>`;
+    h += `<div class="pt-row"><b>教師</b>：${infoVal(S,"teacher")}　<b>員工代號</b>：${infoVal(S,"teacherId")}</div>`;
     h += `<div class="pt-row"><b>操作技能名稱</b>：${infoVal(S,"skill")}</div>`;
     h += `<div class="pt-row">教師曾經使用 DOPS 評估學員的總次數：${["0","1","2","3","4","5-9",">10"].map(o=>box(S.info.tTimes===o)+o).join(" ")}</div>`;
     h += `<div class="pt-row">學員曾經執行此操作技能總次數：${["0","1","2","3","4","5-9",">10"].map(o=>box(S.info.sTimes===o)+o).join(" ")}</div>`;
@@ -854,31 +1104,51 @@ async function exportPDF(mode = "save"){
 }
 
 let clearArmed = false;
+let clearArmTimer = null;
+
+function resetClearPrompt(){
+  clearArmed = false;
+  if(clearArmTimer){
+    clearTimeout(clearArmTimer);
+    clearArmTimer = null;
+  }
+  const btn = document.getElementById("clearBtn");
+  if(btn){
+    btn.textContent = "清除重填";
+    btn.style.background = "";
+    btn.style.color = "";
+  }
+}
+
 function clearAll(){
   const btn = document.getElementById("clearBtn");
   const msg = document.getElementById("barMsg");
+  if(saveRequestInFlight){
+    msg.textContent = "存檔仍在進行，請完成後再清除。";
+    return;
+  }
+  if(aiRequestInFlight){
+    msg.textContent = "AI 整理仍在進行，請完成後再清除。";
+    return;
+  }
   if(!clearArmed){
     clearArmed = true;
     btn.textContent = "再按一次確認清除";
     btn.style.background = "#8A4A3A";
     btn.style.color = "#fff";
     msg.textContent = "將清除目前表單所有內容";
-    setTimeout(()=>{
-      clearArmed = false;
-      btn.textContent = "清除重填";
-      btn.style.background = "";
-      btn.style.color = "";
+    clearArmTimer = setTimeout(()=>{
+      resetClearPrompt();
       msg.textContent = "";
     }, 4000);
     return;
   }
-  clearArmed = false;
-  state[cur] = {info:{},scores:{},fb:{}};
+  resetClearPrompt();
+  state[cur] = {info:{},scores:{},fb:{},save:{}};
   document.getElementById("rawNotes").value = "";
-  const btn2 = document.getElementById("clearBtn");
-  btn2.textContent = "清除重填";
-  btn2.style.background = "";
-  btn2.style.color = "";
+  const aiErr = document.getElementById("aiErr");
+  aiErr.textContent = "";
+  aiErr.style.display = "none";
   msg.textContent = "已清除";
   setTimeout(()=>{ msg.textContent=""; }, 2000);
   render();
