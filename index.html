@@ -82,6 +82,15 @@ header.app p{font-size:.8rem;color:#6B6B60;margin-top:2px}
 .band .na.on{background:#555;color:#fff;border-style:solid;border-color:#555}
 .zonelabels{display:flex;gap:4px;font-size:.66rem;color:#9A9A8E;margin-top:3px}
 .zonelabels span{text-align:center}
+.attitude-legend{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.attitude-legend span{padding:4px 8px;border-radius:999px;background:var(--mid);font-size:.72rem;color:var(--mid-text)}
+.attitude-category{margin:14px -16px 0;padding:8px 16px;background:var(--teal-soft);color:var(--teal);font-weight:700;font-size:.86rem}
+.attitude-band{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.attitude-band button{min-width:66px;height:40px;padding:0 8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font:inherit;font-size:.8rem;cursor:pointer}
+.attitude-band button.on{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:700}
+.item-remark{margin-top:8px;width:100%;min-height:56px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#FDFDFB;font:inherit;font-size:.84rem;line-height:1.5;resize:vertical}
+.score-total{margin-top:14px;text-align:right;font-weight:700;color:var(--teal)}
+.preview-notice{margin:0 0 14px;padding:10px 12px;border:1px solid #E5CAA0;border-radius:9px;background:#FFF8E8;color:#6F4D16;font-size:.8rem}
 /* AI 區 */
 .aibtn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;background:var(--amber);color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:700;cursor:pointer;font-family:inherit}
 .aibtn:disabled{opacity:.5;cursor:wait}
@@ -143,7 +152,7 @@ header.app p{font-size:.8rem;color:#6B6B60;margin-top:2px}
       <button type="button" class="discipline-btn" id="discipline-ot" aria-pressed="false" onclick="chooseDiscipline('OT')">
         <span class="name">職能治療</span>
         <span class="abbr">OCCUPATIONAL THERAPY</span>
-        <span class="forms">Mini-CEX、Splint-DOPS、評估工具 DOPS</span>
+        <span class="forms">Mini-CEX、Splint-DOPS、評估工具 DOPS、專業態度評量表</span>
       </button>
       <button type="button" class="discipline-btn" id="discipline-pt" aria-pressed="false" onclick="chooseDiscipline('PT')">
         <span class="name">物理治療</span>
@@ -166,6 +175,7 @@ header.app p{font-size:.8rem;color:#6B6B60;margin-top:2px}
       <button id="pick-minicex" class="on" onclick="switchForm('minicex')">Mini-CEX 評量表</button>
       <button id="pick-dops" onclick="switchForm('dops')">Splint-DOPS 副木評估</button>
       <button id="pick-evalDops" onclick="switchForm('evalDops')">評估工具 DOPS</button>
+      <button id="pick-attitude" onclick="switchForm('attitude')">專業態度評量表</button>
       <button id="pick-ptDops" onclick="switchForm('ptDops')">物理因子治療儀器操作 DOPS</button>
     </div>
 
@@ -382,6 +392,46 @@ const FORMS = {
     ],
     sig: ["教師","學員"]
   },
+  attitude: {
+    title: "雲林基督教醫院職能治療",
+    subtitle: "專業態度評量表",
+    info: [
+      {k:"trainee", label:"受評者", type:"text"},
+      {k:"traineeRole", label:"職稱", type:"chips", opts:["實習學生","PGY1","PGY2"]},
+      {k:"phase", label:"評量階段", type:"chips", opts:["期中","期末"]},
+      {k:"teacher", label:"評估者", type:"text"},
+      {k:"date", label:"評估日期", type:"date"}
+    ],
+    scoreValues: [5,4,3,2,1],
+    scoreLabels: {5:"總是",4:"經常",3:"有時",2:"偶爾",1:"不曾"},
+    items: [
+      {c:"專業態度行為",n:"1. 準時上下班，適當安排每日的作息。"},
+      {c:"專業態度行為",n:"2. 準時開始及結束治療。"},
+      {c:"專業態度行為",n:"3. 能負起團隊工作責任並能處理緊急狀況。"},
+      {c:"專業態度行為",n:"4. 能配合需要，調整工作步調。"},
+      {c:"專業態度行為",n:"5. 需要時能適當的介紹職能治療。"},
+      {c:"專業態度行為",n:"6. 準時繳交病歷報告及各項作業報告。"},
+      {c:"專業態度行為",n:"7. 對工作負責盡職。"},
+      {c:"行政管理能力",n:"8. 輪流擔任值日生，並確實完成值日生相關職責。"},
+      {c:"行政管理能力",n:"9. 確實管理治療器材，避免遺失或毀損。"},
+      {c:"行政管理能力",n:"10. 維持治療環境的整潔，並適當的維修治療用具。"},
+      {c:"行政管理能力",n:"11. 能適當的補充或建議治療材料的申請與採購。"},
+      {c:"行政管理能力",n:"12. 定期清點治療室的器材。"},
+      {c:"行政管理能力",n:"13. 定期對治療工作環境及治療器材做清潔及消毒。"},
+      {c:"自我及專業成長能力",n:"14. 有疑問時，能主動向老師、同學或其他專業人員尋求協助。"},
+      {c:"自我及專業成長能力",n:"15. 必要時，能提出適當的建議及自己獨到的見解。"},
+      {c:"自我及專業成長能力",n:"16. 接受指導者的建議並做適當的修正。"},
+      {c:"自我及專業成長能力",n:"17. 了解自己的優缺點並適當的表現與調適。"},
+      {c:"自我及專業成長能力",n:"18. 能適當的處理個人及工作上的挫折。"},
+      {c:"自我及專業成長能力",n:"19. 除了職能治療以外，對其他有關個案健康的事項能表現積極興趣。"},
+      {c:"自我及專業成長能力",n:"20. 主動尋求學習的機會以增加自己的技能及知識。"}
+    ],
+    scaleNote: "5 分：總是；4 分：經常；3 分：有時；2 分：偶爾；1 分：不曾。",
+    feedback: [],
+    sig: ["評估者簽名"],
+    perItemRemarks: true,
+    saveEnabled: false
+  },
   ptDops: {
     title: "雲林基督教醫院復健技術課",
     subtitle: "物理治療－操作技能直接觀察評估表",
@@ -421,7 +471,7 @@ const FORMS = {
 };
 
 const DISCIPLINES = {
-  OT: {label:"職能治療", forms:["minicex","dops","evalDops"]},
+  OT: {label:"職能治療", forms:["minicex","dops","evalDops","attitude"]},
   PT: {label:"物理治療", forms:["minicex","ptDops"]}
 };
 
@@ -431,6 +481,7 @@ let state = {
   minicex:{info:{},scores:{},fb:{},save:{}},
   dops:{info:{},scores:{},fb:{},save:{}},
   evalDops:{info:{},scores:{},fb:{},save:{}},
+  attitude:{info:{},scores:{},remarks:{},fb:{},save:{}},
   ptDops:{info:{},scores:{},fb:{},save:{}}
 };
 
@@ -446,7 +497,7 @@ function initLogo(){
 
 /* ---------- 畫面 ---------- */
 function newFormState(){
-  return {info:{},scores:{},fb:{},save:{}};
+  return {info:{},scores:{},remarks:{},fb:{},save:{}};
 }
 
 function resetAllFormStates(){
@@ -454,6 +505,7 @@ function resetAllFormStates(){
     minicex:newFormState(),
     dops:newFormState(),
     evalDops:newFormState(),
+    attitude:newFormState(),
     ptDops:newFormState()
   };
   const notes = document.getElementById("rawNotes");
@@ -477,6 +529,7 @@ function hasEnteredData(){
       key !== "discipline" && String(value ?? "").trim()
     );
     return meaningfulInfo || Object.keys(S.scores || {}).length > 0 ||
+      Object.values(S.remarks || {}).some(value=>String(value ?? "").trim()) ||
       Object.values(S.fb || {}).some(value=>String(value ?? "").trim()) ||
       ["saving","saved"].includes(S.save?.status);
   });
@@ -547,6 +600,7 @@ function switchForm(f){
   document.getElementById("pick-minicex").classList.toggle("on", f==="minicex");
   document.getElementById("pick-dops").classList.toggle("on", f==="dops");
   document.getElementById("pick-evalDops").classList.toggle("on", f==="evalDops");
+  document.getElementById("pick-attitude").classList.toggle("on", f==="attitude");
   document.getElementById("pick-ptDops").classList.toggle("on", f==="ptDops");
   render();
 }
@@ -555,6 +609,8 @@ function render(){
   if(!activeDiscipline || !isFormAllowed(cur)) return;
   if(cur === "minicex") state.minicex.info.discipline = DISCIPLINES[activeDiscipline].label;
   const F = FORMS[cur], S = state[cur];
+  const hasAiFeedback = F.feedback.length > 0;
+  document.getElementById("aiCard").hidden = !hasAiFeedback;
   document.getElementById("rawNotes").placeholder = F.notesPlaceholder ||
     "例：請記錄本次直接觀察到的具體表現、做得好的地方與需要加強之處……";
   let h = '<div class="card"><h2>基本資料</h2><div class="fgrid">';
@@ -570,21 +626,46 @@ function render(){
   }
   h += '</div></div>';
 
+  if(F.saveEnabled === false){
+    h += '<div class="preview-notice">目前為表單預覽：可完整填寫並匯出 PDF；Google 試算表欄位尚未建立，因此「確認存檔」暫不開放，避免資料被送到錯誤的工作表。</div>';
+  }
   h += `<div class="card"><h2>評量項目</h2>
     <div style="font-size:.74rem;color:#8A8A7E;margin-bottom:8px">${F.scaleNote}</div>`;
+  if(F.scoreValues){
+    h += '<div class="attitude-legend">' + F.scoreValues.map(v=>`<span>${v} 分・${F.scoreLabels[v]}</span>`).join("") + '</div>';
+  }
+  let previousCategory = "";
   F.items.forEach((it,i)=>{
+    if(it.c && it.c !== previousCategory){
+      h += `<div class="attitude-category">${it.c}</div>`;
+      previousCategory = it.c;
+    }
     const sel = S.scores[i];
     h += `<div class="item"><div class="name">${it.n}</div>`;
     if(it.g) h += `<div class="guide">${it.g}</div>`;
-    h += '<div class="band">';
-    h += '<div class="zone low">' +[1,2,3].map(v=>scoreBtn(i,v,sel)).join("")+'</div>';
-    h += '<div class="zone mid">' +[4,5,6].map(v=>scoreBtn(i,v,sel)).join("")+'</div>';
-    h += '<div class="zone high">'+[7,8,9].map(v=>scoreBtn(i,v,sel)).join("")+'</div>';
-    h += `<button class="na ${sel==="NA"?"on":""}" onclick="setScore(${i},'NA')">${F.naLabel}</button>`;
-    h += '</div>';
-    h += `<div class="zonelabels"><span style="flex:1">未達標準</span><span style="flex:1">符合標準</span><span style="flex:1">優秀</span></div>`;
+    if(F.scoreValues){
+      h += '<div class="attitude-band">' + F.scoreValues.map(v=>
+        `<button class="${sel===v?"on":""}" onclick="setScore(${i},${v})">${v}・${F.scoreLabels[v]}</button>`
+      ).join("") + '</div>';
+    }else{
+      h += '<div class="band">';
+      h += '<div class="zone low">' +[1,2,3].map(v=>scoreBtn(i,v,sel)).join("")+'</div>';
+      h += '<div class="zone mid">' +[4,5,6].map(v=>scoreBtn(i,v,sel)).join("")+'</div>';
+      h += '<div class="zone high">'+[7,8,9].map(v=>scoreBtn(i,v,sel)).join("")+'</div>';
+      h += `<button class="na ${sel==="NA"?"on":""}" onclick="setScore(${i},'NA')">${F.naLabel}</button>`;
+      h += '</div>';
+      h += `<div class="zonelabels"><span style="flex:1">未達標準</span><span style="flex:1">符合標準</span><span style="flex:1">優秀</span></div>`;
+    }
+    if(F.perItemRemarks){
+      h += `<textarea class="item-remark" aria-label="第 ${i+1} 題備註" placeholder="備註（選填）" oninput="setRemark(${i},this.value)">${esc(S.remarks?.[i]||"")}</textarea>`;
+    }
     h += '</div>';
   });
+  if(F.scoreValues){
+    const scoreCount = Object.values(S.scores).filter(v=>Number.isInteger(v)).length;
+    const total = Object.values(S.scores).reduce((sum,v)=>sum+(Number.isInteger(v)?v:0),0);
+    h += `<div class="score-total">總分：${scoreCount===F.items.length?total:"尚未完成"}／${F.items.length*Math.max(...F.scoreValues)}</div>`;
+  }
   h += '</div>';
   document.getElementById("formRoot").innerHTML = h;
   renderFb();
@@ -611,6 +692,12 @@ function setScore(i,v){
   if(["saving","saved"].includes(S.save?.status)) return;
   S.scores[i] = v;
   render();
+}
+function setRemark(i,v){
+  const S = state[cur];
+  if(["saving","saved"].includes(S.save?.status)) return;
+  if(!S.remarks) S.remarks = {};
+  S.remarks[i] = v;
 }
 function renderFb(){
   const F = FORMS[cur], S = state[cur];
@@ -658,6 +745,7 @@ function getFormSaveName(formType = cur){
     minicex: "Mini-CEX",
     dops: "Splint-DOPS",
     evalDops: "評估工具 DOPS",
+    attitude: "專業態度評量表",
     ptDops: "物理因子 DOPS"
   }[formType] || "臨床評核表";
 }
@@ -666,6 +754,7 @@ function validateSave(){
   if(!activeDiscipline) return "請先選擇職能治療或物理治療。";
   if(!isFormAllowed(cur)) return "目前選擇的專業不適用這份評估表。";
   const S = state[cur];
+  if(FORMS[cur].saveEnabled === false) return "這份表單的 Google 試算表欄位尚未建立，目前請先匯出 PDF。";
   const required = [
     ["date","實施日期"],["place","評估地點"],["trainee","學員姓名"],
     ["traineeRole","學員身分"],["teacher","教師姓名"]
@@ -748,7 +837,11 @@ function updateSaveButton(){
   const btn = document.getElementById("saveBtn");
   if(!btn) return;
   const save = state[cur]?.save || {};
-  if(save.status === "saved"){
+  if(FORMS[cur]?.saveEnabled === false){
+    btn.disabled = true;
+    btn.textContent = "存檔串接中";
+    btn.title = "目前可匯出 PDF；Google 試算表尚未建立對應欄位";
+  }else if(save.status === "saved"){
     btn.disabled = true;
     btn.textContent = "已確認存檔";
     btn.title = `紀錄 ID：${save.recordId}`;
@@ -764,7 +857,7 @@ function updateSaveButton(){
 
 function applySaveLock(){
   const locked = ["saving","saved"].includes(state[cur]?.save?.status);
-  document.querySelectorAll("#formRoot input,#formRoot button,#fbFields textarea,#rawNotes")
+  document.querySelectorAll("#formRoot input,#formRoot button,#formRoot textarea,#fbFields textarea,#rawNotes")
     .forEach(el=>{ el.disabled = locked; });
   const aiBtn = document.getElementById("aiGo");
   if(aiBtn) aiBtn.disabled = locked || aiRequestInFlight;
@@ -777,6 +870,10 @@ function setPickerDisabled(disabled){
 async function confirmSave(){
   const msg = document.getElementById("barMsg");
   msg.textContent = "";
+  if(FORMS[cur]?.saveEnabled === false){
+    msg.textContent = "專業態度評量表目前可匯出 PDF；Google 試算表存檔尚未串接。";
+    return;
+  }
   if(saveRequestInFlight) return;
   if(isSaved()){
     msg.textContent = `此份表單已存檔｜紀錄 ID：${state[cur].save.recordId}`;
@@ -1102,7 +1199,10 @@ function buildPrint(){
     <hr style="margin-top:2pt;">
   `;
 
-  if(cur==="minicex"){
+  if(cur==="attitude"){
+    h += `<div class="pt-row"><b>受評者</b>：${infoVal(S,"trainee")}　<b>職稱</b>：${["實習學生","PGY1","PGY2"].map(o=>box(S.info.traineeRole===o)+" "+o).join("　")}</div>`;
+    h += `<div class="pt-row"><b>評量階段</b>：${["期中","期末"].map(o=>box(S.info.phase===o)+" "+o).join("　")}　<b>評估者</b>：${infoVal(S,"teacher")}</div>`;
+  }else if(cur==="minicex"){
     h += `<div class="pt-row"><b>職類</b>：${["職能治療","物理治療"].map(o=>box(S.info.discipline===o)+" "+o).join("　")}</div>`;
     h += `<div class="pt-row"><b>學員</b>：${infoVal(S,"trainee")}　${["實習學生","PGY學員"].map(o=>box(S.info.traineeRole===o)+" "+o).join("　")}</div>`;
     h += `<div class="pt-row"><b>教師</b>：${infoVal(S,"teacher")}　${["臨床","資深"].map(o=>box(S.info.teacherRole===o)+" "+o).join("　")}</div>`;
@@ -1124,24 +1224,43 @@ function buildPrint(){
     h += `<div class="pt-row">此操作技能的困難度：${["低","中","高"].map(o=>box(S.info.diff===o)+" "+o).join("　")}</div>`;
   }
   h += `<hr><div class="pt-row" style="margin-bottom:6pt;"><b>評量項目</b>（${F.scaleNote}）</div>`;
-  F.items.forEach((it,i)=>{
-    const sel = S.scores[i];
-    let row = `<div class="pt-item" style="display:flex; align-items:center; margin-bottom:2pt;">`;
-    row += `<div style="width:140px; font-weight:bold; flex-shrink:0;">${it.n}</div>`;
-    row += `<div style="flex:1; text-align:center;">`;
-    for(let v=1;v<=9;v++){ 
-      row += `<span style="display:inline-block; margin:0 4px;">${box(sel===v)} ${v}</span>`; 
-      if(v===3||v===6) row += `<span style="display:inline-block; margin:0 4px; color:#888;">｜</span>`; 
+  if(cur==="attitude"){
+    let category = "";
+    F.items.forEach((it,i)=>{
+      if(it.c !== category){
+        category = it.c;
+        h += `<div style="font-weight:700;background:#eee;padding:2pt 4pt;margin-top:4pt;">${category}</div>`;
+      }
+      const sel = S.scores[i];
+      h += `<div style="display:grid;grid-template-columns:1fr 160px;gap:6pt;border-bottom:1px solid #ccc;padding:3pt 2pt;break-inside:avoid;">`;
+      h += `<div>${it.n}${S.remarks?.[i]?`<div style="font-size:8pt;color:#444;margin-top:2pt;">備註：${esc(S.remarks[i]).replace(/\n/g,"<br>")}</div>`:""}</div>`;
+      h += `<div style="text-align:right;white-space:nowrap;">${F.scoreValues.map(v=>`${box(sel===v)} ${v}`).join("　")}</div></div>`;
+    });
+    const complete = F.items.every((_,i)=>Number.isInteger(S.scores[i]));
+    const total = F.items.reduce((sum,_,i)=>sum+(Number.isInteger(S.scores[i])?S.scores[i]:0),0);
+    h += `<div class="pt-row" style="text-align:right;font-weight:700;margin-top:6pt;">總分：${complete?total:"　　　　"}／100</div>`;
+  }else{
+    F.items.forEach((it,i)=>{
+      const sel = S.scores[i];
+      let row = `<div class="pt-item" style="display:flex; align-items:center; margin-bottom:2pt;">`;
+      row += `<div style="width:140px; font-weight:bold; flex-shrink:0;">${it.n}</div>`;
+      row += `<div style="flex:1; text-align:center;">`;
+      for(let v=1;v<=9;v++){
+        row += `<span style="display:inline-block; margin:0 4px;">${box(sel===v)} ${v}</span>`;
+        if(v===3||v===6) row += `<span style="display:inline-block; margin:0 4px; color:#888;">｜</span>`;
+      }
+      row += `<span style="display:inline-block; margin:0 4px; color:#888;">｜</span>`;
+      row += `<span style="display:inline-block; margin:0 4px;">${box(sel==="NA")} ${F.naLabel}</span>`;
+      row += `</div></div>`;
+      h += row;
+      if(it.g) h += `<div class="pt-guide">${it.g}</div>`;
+    });
+  }
+  if(F.feedback.length){
+    h += `<hr><div class="pt-row"><b>指導與回饋：</b></div>`;
+    for(const f of F.feedback){
+      h += `<div class="pt-fb"><b>(${f.label})</b>${esc(S.fb[f.k]||"").replace(/\n/g,"<br>")||"<br><br>"}</div>`;
     }
-    row += `<span style="display:inline-block; margin:0 4px; color:#888;">｜</span>`;
-    row += `<span style="display:inline-block; margin:0 4px;">${box(sel==="NA")} ${F.naLabel}</span>`;
-    row += `</div></div>`;
-    h += row;
-    if(it.g) h += `<div class="pt-guide">${it.g}</div>`;
-  });
-  h += `<hr><div class="pt-row"><b>指導與回饋：</b></div>`;
-  for(const f of F.feedback){
-    h += `<div class="pt-fb"><b>(${f.label})</b>${esc(S.fb[f.k]||"").replace(/\n/g,"<br>")||"<br><br>"}</div>`;
   }
   if(cur==="minicex"){
     h += `<div class="pt-row" style="margin-top:8pt">直接觀察時間：${infoVal(S,"obsMin")} 分鐘，回饋時間：${infoVal(S,"fbMin")} 分鐘</div>`;
@@ -1216,6 +1335,7 @@ async function exportPDF(mode = "save"){
     if(cur==="minicex") fnamePrefix = "miniCEX";
     else if(cur==="dops") fnamePrefix = "SplintDOPS";
     else if(cur==="evalDops") fnamePrefix = "EvalDOPS";
+    else if(cur==="attitude") fnamePrefix = "OT_ProfessionalAttitude";
     else if(cur==="ptDops") fnamePrefix = "PT_DOPS";
     
     const fname = `${fnamePrefix}_${who}_${d}.pdf`;
@@ -1297,7 +1417,7 @@ function clearAll(){
     return;
   }
   resetClearPrompt();
-  state[cur] = {info:{},scores:{},fb:{},save:{}};
+  state[cur] = newFormState();
   document.getElementById("rawNotes").value = "";
   const aiErr = document.getElementById("aiErr");
   aiErr.textContent = "";

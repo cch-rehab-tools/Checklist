@@ -11,8 +11,13 @@ for (const script of inlineScripts) new Function(script);
 
 assert.match(html, /id="discipline-ot"[\s\S]*chooseDiscipline\('OT'\)/);
 assert.match(html, /id="discipline-pt"[\s\S]*chooseDiscipline\('PT'\)/);
-assert.match(html, /OT:\s*\{label:"職能治療",\s*forms:\["minicex","dops","evalDops"\]\}/);
+assert.match(html, /OT:\s*\{label:"職能治療",\s*forms:\["minicex","dops","evalDops","attitude"\]\}/);
 assert.match(html, /PT:\s*\{label:"物理治療",\s*forms:\["minicex","ptDops"\]\}/);
+assert.match(html, /id="pick-attitude"[\s\S]*switchForm\('attitude'\)/);
+assert.match(html, /subtitle:\s*"專業態度評量表"/);
+assert.match(html, /scoreValues:\s*\[5,4,3,2,1\]/);
+assert.match(html, /saveEnabled:\s*false/);
+assert.equal((html.match(/\{c:"(?:專業態度行為|行政管理能力|自我及專業成長能力)",n:"\d+\./g) || []).length, 20);
 assert.match(html, /<div class="actionbar" id="actionbar" hidden>/);
 assert.match(html, /if\(formType === "minicex"\)\{\s*discipline = activeDiscipline;/);
 assert.doesNotMatch(
