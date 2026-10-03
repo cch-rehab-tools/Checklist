@@ -21,6 +21,7 @@
 }
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 *{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none !important}
 body{font-family:"Noto Sans TC",system-ui,sans-serif;background:var(--paper);color:var(--ink);line-height:1.6;-webkit-tap-highlight-color:transparent}
 .wrap{max-width:760px;margin:0 auto;padding:20px 16px 120px}
 header.app{border-bottom:3px double var(--teal);padding:14px 0 12px;margin-bottom:14px;display:flex;align-items:center;gap:14px}
@@ -31,6 +32,25 @@ header.app p{font-size:.8rem;color:#6B6B60;margin-top:2px}
 .homelink{font-size:.82rem;color:var(--teal);text-decoration:none}
 .homelink:hover{text-decoration:underline}
 .keybtn{font-size:.75rem;color:var(--amber);border:1px solid var(--amber);padding:5px 10px;border-radius:6px;cursor:pointer;background:#fff;font-family:inherit}
+/* 專業選擇 */
+.discipline-picker{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:18px}
+.discipline-picker h2{font-size:1.05rem;color:var(--teal);margin-bottom:2px}
+.discipline-picker p{font-size:.82rem;color:#6B6B60;margin-bottom:14px}
+.discipline-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.discipline-btn{min-height:112px;border:2px solid var(--line);border-radius:14px;background:#fff;color:var(--ink);padding:16px;cursor:pointer;font-family:inherit;text-align:left;transition:border-color .15s,background .15s,transform .15s}
+.discipline-btn:hover{border-color:var(--teal);transform:translateY(-1px)}
+.discipline-btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.discipline-btn:focus-visible{outline:3px solid rgba(14,90,90,.25);outline-offset:2px}
+.discipline-btn.on{border-color:var(--teal);background:var(--teal-soft);color:var(--teal)}
+.discipline-btn .name{display:block;font-family:"Noto Serif TC",serif;font-size:1.15rem;font-weight:700}
+.discipline-btn .abbr{display:block;font-size:.78rem;font-weight:700;letter-spacing:.12em;margin-top:2px}
+.discipline-btn .forms{display:block;font-size:.73rem;color:#77776C;margin-top:8px;line-height:1.45}
+.discipline-status{min-height:1.5em;margin-top:10px;font-size:.8rem;color:var(--teal);font-weight:700}
+.form-choice-title{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 8px}
+.form-choice-title h2{font-size:.9rem;color:var(--teal)}
+.discipline-current{display:flex;align-items:center;gap:8px}
+.form-choice-title span{font-size:.76rem;color:#6B6B60}
+.switch-discipline{border:1px solid var(--teal);background:#fff;color:var(--teal);border-radius:999px;padding:5px 10px;font:inherit;font-size:.72rem;cursor:pointer}
 /* 表單選擇 */
 .picker{display:grid;grid-template-columns:repeat(2, 1fr);gap:10px;margin-bottom:20px}
 .picker button{padding:14px 10px;border:1.5px solid var(--line);background:#fff;border-radius:10px;font-size:.95rem;font-weight:500;cursor:pointer;font-family:inherit;color:var(--ink);transition:border-color .15s,background .15s}
@@ -94,6 +114,8 @@ header.app p{font-size:.8rem;color:#6B6B60;margin-top:2px}
 #printArea .pt-sig{margin-top:14pt;display:flex;justify-content:space-between}
 #printArea hr{border:none;border-top:1px solid #000;margin:6pt 0}
 @media(max-width:480px){
+  .discipline-grid{grid-template-columns:1fr}
+  .discipline-btn{min-height:96px}
   .picker{grid-template-columns:1fr}
   .fgrid{grid-template-columns:1fr}
   .band button{width:30px;height:36px;font-size:.85rem}
@@ -114,37 +136,64 @@ header.app p{font-size:.8rem;color:#6B6B60;margin-top:2px}
     <button class="keybtn" id="keyBtn" onclick="openKeySettings()">🔑 AI 金鑰</button>
   </div>
 
-  <div class="picker">
-    <button id="pick-minicex" class="on" onclick="switchForm('minicex')">Mini-CEX 評量表</button>
-    <button id="pick-dops" onclick="switchForm('dops')">Splint-DOPS 副木評估</button>
-    <button id="pick-evalDops" onclick="switchForm('evalDops')">評估工具 DOPS</button>
-    <button id="pick-ptDops" onclick="switchForm('ptDops')">物理因子治療儀器操作 DOPS</button>
-  </div>
+  <section class="discipline-picker" aria-labelledby="disciplineTitle">
+    <h2 id="disciplineTitle">請先選擇專業</h2>
+    <p>選擇後，只會顯示該專業適用的評估表。</p>
+    <div class="discipline-grid">
+      <button type="button" class="discipline-btn" id="discipline-ot" aria-pressed="false" onclick="chooseDiscipline('OT')">
+        <span class="name">職能治療</span>
+        <span class="abbr">OCCUPATIONAL THERAPY</span>
+        <span class="forms">Mini-CEX、Splint-DOPS、評估工具 DOPS</span>
+      </button>
+      <button type="button" class="discipline-btn" id="discipline-pt" aria-pressed="false" onclick="chooseDiscipline('PT')">
+        <span class="name">物理治療</span>
+        <span class="abbr">PHYSICAL THERAPY</span>
+        <span class="forms">Mini-CEX、物理因子治療儀器操作 DOPS</span>
+      </button>
+    </div>
+    <div class="discipline-status" id="disciplineStatus" aria-live="polite">尚未選擇專業</div>
+  </section>
 
-  <div id="formRoot"></div>
+  <div id="formWorkspace" hidden>
+    <div class="form-choice-title">
+      <h2>選擇評估表</h2>
+      <div class="discipline-current">
+        <span id="currentDisciplineLabel"></span>
+        <button type="button" class="switch-discipline" onclick="showDisciplineChoices()">切換專業</button>
+      </div>
+    </div>
+    <div class="picker" id="formPicker">
+      <button id="pick-minicex" class="on" onclick="switchForm('minicex')">Mini-CEX 評量表</button>
+      <button id="pick-dops" onclick="switchForm('dops')">Splint-DOPS 副木評估</button>
+      <button id="pick-evalDops" onclick="switchForm('evalDops')">評估工具 DOPS</button>
+      <button id="pick-ptDops" onclick="switchForm('ptDops')">物理因子治療儀器操作 DOPS</button>
+    </div>
 
-  <div class="card" id="aiCard">
-    <h2>回饋整理（Gemini AI）</h2>
-    <div class="field full" style="margin-bottom:10px">
-      <label for="employeeId">院方共用 AI 員工編號（僅確認使用資格，不會隨觀察筆記存檔）</label>
-      <input id="employeeId" type="text" inputmode="numeric" autocomplete="off"
-        placeholder="輸入員工編號即可使用院方共用 AI" oninput="rememberEmployeeId()">
+    <div id="formRoot"></div>
+
+    <div class="card" id="aiCard">
+      <h2>回饋整理（Gemini AI）</h2>
+      <div class="field full" style="margin-bottom:10px">
+        <label for="employeeId">院方共用 AI 員工編號（僅確認使用資格，不會隨觀察筆記存檔）</label>
+        <input id="employeeId" type="text" inputmode="numeric" autocomplete="off"
+          placeholder="輸入員工編號即可使用院方共用 AI" oninput="rememberEmployeeId()">
+      </div>
+      <div class="field full">
+        <label>觀察筆記（口語、片段都可以；請勿包含病人姓名等可識別資訊）</label>
+        <textarea id="rawNotes" placeholder="例：個案製作前置式垂足板，precut 尺寸太小無法包覆腳踝……"></textarea>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="aibtn" id="aiGo" onclick="runAI()">✨ AI 一鍵整理</button>
+        <button class="aibtn" style="background:#fff;color:var(--amber);border:1.5px solid var(--amber)" onclick="copyPrompt()">複製整理指令 (手動備用)</button>
+      </div>
+      <div class="ainote">輸入員工編號與觀察筆記後，點擊「AI 一鍵整理」即可自動分項填寫。</div>
+      <div class="aierr" id="aiErr"></div>
+      <div id="fbFields" style="margin-top:14px"></div>
     </div>
-    <div class="field full">
-      <label>觀察筆記（口語、片段都可以；請勿包含病人姓名等可識別資訊）</label>
-      <textarea id="rawNotes" placeholder="例：個案製作前置式垂足板，precut 尺寸太小無法包覆腳踝……"></textarea>
-    </div>
-    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <button class="aibtn" id="aiGo" onclick="runAI()">✨ AI 一鍵整理</button>
-      <button class="aibtn" style="background:#fff;color:var(--amber);border:1.5px solid var(--amber)" onclick="copyPrompt()">複製整理指令 (手動備用)</button>
-    </div>
-    <div class="ainote">輸入員工編號與觀察筆記後，點擊「AI 一鍵整理」即可自動分項填寫。</div>
-    <div class="aierr" id="aiErr"></div>
-    <div id="fbFields" style="margin-top:14px"></div>
   </div>
 </div>
 
-<div class="actionbar">
+<div class="actionbar" id="actionbar" hidden>
   <div style="display:flex;flex-direction:column;align-items:center;gap:4px;width:100%">
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <button class="btn-clear" id="clearBtn" onclick="clearAll()">清除重填</button>
@@ -231,7 +280,6 @@ const FORMS = {
     title: "雲林基督教醫院復健技術課",
     subtitle: "迷你臨床檢定 Mini-CEX 評量表",
     info: [
-      {k:"discipline", label:"職類", type:"chips", opts:["職能治療","物理治療"]},
       {k:"trainee", label:"學員姓名", type:"text"},
       {k:"traineeRole", label:"學員身分", type:"chips", opts:["實習學生","PGY學員"]},
       {k:"teacher", label:"教師姓名", type:"text"},
@@ -372,6 +420,12 @@ const FORMS = {
   }
 };
 
+const DISCIPLINES = {
+  OT: {label:"職能治療", forms:["minicex","dops","evalDops"]},
+  PT: {label:"物理治療", forms:["minicex","ptDops"]}
+};
+
+let activeDiscipline = "";
 let cur = "minicex";
 let state = {
   minicex:{info:{},scores:{},fb:{},save:{}},
@@ -391,7 +445,103 @@ function initLogo(){
 }
 
 /* ---------- 畫面 ---------- */
+function newFormState(){
+  return {info:{},scores:{},fb:{},save:{}};
+}
+
+function resetAllFormStates(){
+  state = {
+    minicex:newFormState(),
+    dops:newFormState(),
+    evalDops:newFormState(),
+    ptDops:newFormState()
+  };
+  const notes = document.getElementById("rawNotes");
+  if(notes) notes.value = "";
+}
+
+function clearTransientMessages(){
+  resetClearPrompt();
+  const aiErr = document.getElementById("aiErr");
+  if(aiErr){
+    aiErr.textContent = "";
+    aiErr.style.display = "none";
+  }
+  const barMsg = document.getElementById("barMsg");
+  if(barMsg) barMsg.textContent = "";
+}
+
+function hasEnteredData(){
+  return Object.entries(state).some(([formType,S])=>{
+    const meaningfulInfo = Object.entries(S.info || {}).some(([key,value])=>
+      key !== "discipline" && String(value ?? "").trim()
+    );
+    return meaningfulInfo || Object.keys(S.scores || {}).length > 0 ||
+      Object.values(S.fb || {}).some(value=>String(value ?? "").trim()) ||
+      ["saving","saved"].includes(S.save?.status);
+  });
+}
+
+function isFormAllowed(formType){
+  return !!activeDiscipline && DISCIPLINES[activeDiscipline].forms.includes(formType);
+}
+
+function showDisciplineChoices(){
+  document.getElementById("disciplineTitle").scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+function chooseDiscipline(code){
+  if(!DISCIPLINES[code] || saveRequestInFlight || aiRequestInFlight) return;
+  if(activeDiscipline === code){
+    document.getElementById("formWorkspace").scrollIntoView({behavior:"smooth",block:"start"});
+    return;
+  }
+  if(activeDiscipline && hasEnteredData()){
+    const ok = window.confirm(
+      "切換專業會清除目前畫面中的填寫內容。\n\n已經確認存入 Google 試算表的紀錄不會受到影響。是否繼續？"
+    );
+    if(!ok) return;
+    resetAllFormStates();
+  }
+
+  activeDiscipline = code;
+  cur = "minicex";
+  state.minicex.info.discipline = DISCIPLINES[code].label;
+  clearTransientMessages();
+  updateDisciplineUI();
+  render();
+  document.getElementById("formWorkspace").scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+function updateDisciplineUI(){
+  const hasDiscipline = !!activeDiscipline;
+  const workspace = document.getElementById("formWorkspace");
+  const actionbar = document.getElementById("actionbar");
+  workspace.hidden = !hasDiscipline;
+  actionbar.hidden = !hasDiscipline;
+
+  for(const code of Object.keys(DISCIPLINES)){
+    const button = document.getElementById(`discipline-${code.toLowerCase()}`);
+    const selected = activeDiscipline === code;
+    button.classList.toggle("on", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  }
+
+  const label = hasDiscipline ? DISCIPLINES[activeDiscipline].label : "";
+  document.getElementById("disciplineStatus").textContent = hasDiscipline
+    ? `目前專業：${label}（可點選另一個專業切換）`
+    : "尚未選擇專業";
+  document.getElementById("currentDisciplineLabel").textContent = hasDiscipline
+    ? `目前：${label}` : "";
+
+  for(const formType of Object.keys(FORMS)){
+    const button = document.getElementById(`pick-${formType}`);
+    if(button) button.hidden = !isFormAllowed(formType);
+  }
+}
+
 function switchForm(f){
+  if(!isFormAllowed(f)) return;
   resetClearPrompt();
   cur = f;
   document.getElementById("pick-minicex").classList.toggle("on", f==="minicex");
@@ -402,6 +552,8 @@ function switchForm(f){
 }
 
 function render(){
+  if(!activeDiscipline || !isFormAllowed(cur)) return;
+  if(cur === "minicex") state.minicex.info.discipline = DISCIPLINES[activeDiscipline].label;
   const F = FORMS[cur], S = state[cur];
   document.getElementById("rawNotes").placeholder = F.notesPlaceholder ||
     "例：請記錄本次直接觀察到的具體表現、做得好的地方與需要加強之處……";
@@ -491,8 +643,7 @@ function getSaveRoute(formType = cur){
   const info = state[formType]?.info || {};
   let discipline = "";
   if(formType === "minicex"){
-    if(info.discipline === "職能治療") discipline = "OT";
-    if(info.discipline === "物理治療") discipline = "PT";
+    discipline = activeDiscipline;
   }else{
     discipline = formType === "ptDops" ? "PT" : "OT";
   }
@@ -512,6 +663,8 @@ function getFormSaveName(formType = cur){
 }
 
 function validateSave(){
+  if(!activeDiscipline) return "請先選擇職能治療或物理治療。";
+  if(!isFormAllowed(cur)) return "目前選擇的專業不適用這份評估表。";
   const S = state[cur];
   const required = [
     ["date","實施日期"],["place","評估地點"],["trainee","學員姓名"],
@@ -618,7 +771,7 @@ function applySaveLock(){
 }
 
 function setPickerDisabled(disabled){
-  document.querySelectorAll(".picker button").forEach(el=>{ el.disabled = disabled; });
+  document.querySelectorAll(".discipline-btn,.picker button").forEach(el=>{ el.disabled = disabled; });
 }
 
 async function confirmSave(){
@@ -1157,7 +1310,7 @@ function clearAll(){
 initLogo();
 initEmployeeId();
 updateAiNote();
-render();
+updateDisciplineUI();
 </script>
 </body>
 </html>
