@@ -429,8 +429,7 @@ const FORMS = {
     scaleNote: "5 分：總是；4 分：經常；3 分：有時；2 分：偶爾；1 分：不曾。",
     feedback: [],
     sig: ["評估者簽名"],
-    perItemRemarks: true,
-    saveEnabled: false
+    perItemRemarks: true
   },
   ptDops: {
     title: "雲林基督教醫院復健技術課",
@@ -735,7 +734,7 @@ function getSaveRoute(formType = cur){
     discipline = formType === "ptDops" ? "PT" : "OT";
   }
   const traineeGroup =
-    info.traineeRole === "PGY學員" ? "PGY" :
+    ["PGY學員","PGY1","PGY2"].includes(info.traineeRole) ? "PGY" :
     info.traineeRole === "實習學生" ? "實習學生" : "";
   return {discipline, traineeGroup};
 }
@@ -754,7 +753,26 @@ function validateSave(){
   if(!activeDiscipline) return "請先選擇職能治療或物理治療。";
   if(!isFormAllowed(cur)) return "目前選擇的專業不適用這份評估表。";
   const S = state[cur];
-  if(FORMS[cur].saveEnabled === false) return "這份表單的 Google 試算表欄位尚未建立，目前請先匯出 PDF。";
+  if(cur === "attitude"){
+    const required = [
+      ["date","評估日期"],["trainee","受評者"],["traineeRole","職稱"],
+      ["teacher","評估者"],["phase","評量階段"]
+    ];
+    for(const [key,label] of required){
+      if(!String(S.info[key] || "").trim()) return `請先填寫「${label}」。`;
+    }
+    for(let i=0;i<FORMS[cur].items.length;i++){
+      const value = S.scores[i];
+      if(!(Number.isInteger(value) && value >= 1 && value <= 5)){
+        return `請完成第 ${i + 1} 項評分。`;
+      }
+    }
+    const route = getSaveRoute();
+    if(route.discipline !== "OT" || !route.traineeGroup) return "請確認職稱。";
+    const employeeId = String(document.getElementById("employeeId")?.value || "").trim();
+    if(!employeeId) return "請先輸入員工編號，作為本次存檔授權驗證。";
+    return "";
+  }
   const required = [
     ["date","實施日期"],["place","評估地點"],["trainee","學員姓名"],
     ["traineeRole","學員身分"],["teacher","教師姓名"]
@@ -797,7 +815,13 @@ function buildSavePayload(){
     scores: FORMS[cur].items.map((_,i)=>S.scores[i])
   };
 
-  if(cur === "minicex"){
+  if(cur === "attitude"){
+    Object.assign(data, {
+      phase: String(S.info.phase || ""),
+      remarks: FORMS[cur].items.map((_,i)=>String(S.remarks[i] || "").trim()),
+      totalScore: FORMS[cur].items.reduce((sum,_,i)=>sum + Number(S.scores[i] || 0), 0)
+    });
+  }else if(cur === "minicex"){
     Object.assign(data, {
       evaluationTime: String(S.info.time || ""),
       teacherRole: String(S.info.teacherRole || ""),
